@@ -7,13 +7,15 @@
  */
 
 const API_BASE_URLS = [
+  "https://hireshield-production.up.railway.app",
   "http://127.0.0.1:8001",
   "http://localhost:8001",
   "http://127.0.0.1:8000",
   "http://localhost:8000",
 ];
 
-const WEB_APP_URL = "http://localhost:5173/risk-analysis";
+const WEB_APP_URL =
+  "https://frontend-theta-nine-39.vercel.app/risk-analysis";
 
 // Current active state cache
 let currentTab = null;
@@ -34,19 +36,19 @@ const views = {
 const elements = {
   statusPill: document.getElementById("backendStatusPill"),
   statusText: document.getElementById("backendStatusText"),
-  
+
   // Navigation Tabs
   tabScannerBtn: document.getElementById("tabScannerBtn"),
   tabExtensionBtn: document.getElementById("tabExtensionBtn"),
   backToScannerBtn: document.getElementById("backToScannerBtn"),
   openExtensionsPageBtn: document.getElementById("openExtensionsPageBtn"),
-  
+
   // Ready View
   readyJobTitle: document.getElementById("readyJobTitle"),
   readyJobUrl: document.getElementById("readyJobUrl"),
   readyTargetType: document.getElementById("readyTargetType"),
   startScanBtn: document.getElementById("startScanBtn"),
-  
+
   // Scanning View
   scanStageHeadline: document.getElementById("scanStageHeadline"),
   stageExtract: document.getElementById("stageExtract"),
@@ -54,7 +56,7 @@ const elements = {
   stageNlp: document.getElementById("stageNlp"),
   stageBehavioral: document.getElementById("stageBehavioral"),
   stageRisk: document.getElementById("stageRisk"),
-  
+
   // Results View
   resultSourceBadge: document.getElementById("resultSourceBadge"),
   resultStatusBadge: document.getElementById("resultStatusBadge"),
@@ -66,7 +68,7 @@ const elements = {
   resultScoreDenom: document.getElementById("resultScoreDenom"),
   resultRiskLevelBadge: document.getElementById("resultRiskLevelBadge"),
   resultScoreSubtext: document.getElementById("resultScoreSubtext"),
-  
+
   // Layers
   valBehavioral: document.getElementById("valBehavioral"),
   barBehavioral: document.getElementById("barBehavioral"),
@@ -76,7 +78,7 @@ const elements = {
   barStructural: document.getElementById("barStructural"),
   valTechnical: document.getElementById("valTechnical"),
   barTechnical: document.getElementById("barTechnical"),
-  
+
   // Signals & Explanation & Why Drawer
   signalsCountBadge: document.getElementById("signalsCountBadge"),
   signalsListContainer: document.getElementById("signalsListContainer"),
@@ -86,7 +88,7 @@ const elements = {
   trustSignalsCard: document.getElementById("trustSignalsCard"),
   trustSignalsCountBadge: document.getElementById("trustSignalsCountBadge"),
   trustSignalsListContainer: document.getElementById("trustSignalsListContainer"),
-  
+
   // Verification Audit
   verificationAuditCard: document.getElementById("verificationAuditCard"),
   auditVerdictBadge: document.getElementById("auditVerdictBadge"),
@@ -101,11 +103,11 @@ const elements = {
   whyDrawerArrow: document.getElementById("whyDrawerArrow"),
   explanationText: document.getElementById("explanationText"),
   recommendationsList: document.getElementById("recommendationsList"),
-  
+
   // Buttons
   viewFullAnalysisBtn: document.getElementById("viewFullAnalysisBtn"),
   scanAgainBtn: document.getElementById("scanAgainBtn"),
-  
+
   // Error View
   errorTitle: document.getElementById("errorTitle"),
   errorMessage: document.getElementById("errorMessage"),
@@ -369,7 +371,7 @@ async function extractJobContentFromTab(tab) {
         // Direct DOM extraction
         const url = window.location.href;
         const pageTitle = document.title || "";
-        
+
         // Find visible job title
         const titleEl = document.querySelector(
           ".job-details-jobs-unified-top-card__job-title, .jobsearch-JobInfoHeader-title, .jd-header-title, [data-test='job-title'], main h1, article h1, h1"

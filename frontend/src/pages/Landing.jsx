@@ -22,6 +22,7 @@ import {
 import ShieldHero from '../components/ShieldAnimation/ShieldHero';
 import RadialScoreGauge from '../components/RiskScore/RadialScoreGauge';
 import AITerminal from '../components/RiskAnalysis/AITerminal';
+import InstallExtensionSection from '../components/InstallExtension/InstallExtensionSection';
 
 export default function Landing() {
   const [demoTab, setDemoTab] = useState('low'); // 'low' | 'critical'
@@ -188,6 +189,13 @@ export default function Landing() {
             <p className="text-xs text-text-muted leading-relaxed">
               Job postings, recruiter emails, or career page URLs enter the engine via browser extension or direct input.
             </p>
+            <a
+              href="#install-extension"
+              className="inline-flex items-center gap-1 mt-2.5 font-mono text-[11px] text-brand-light hover:underline"
+            >
+              <span>How to Install Extension</span>
+              <ArrowRight className="w-3 h-3" />
+            </a>
           </div>
 
           {/* Step 02 */}
@@ -449,7 +457,10 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 7. FINAL CTA */}
+      {/* 7. HOW TO INSTALL HIRESHIELD EXTENSION */}
+      <InstallExtensionSection />
+
+      {/* 8. FINAL CTA */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
         <div className="p-10 sm:p-16 rounded-3xl bg-gradient-to-b from-surface-100 via-surface-200 to-surface-300 border border-surface-border shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-cyber-grid opacity-30 pointer-events-none" />

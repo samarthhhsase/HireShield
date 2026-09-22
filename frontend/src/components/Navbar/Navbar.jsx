@@ -94,6 +94,12 @@ export default function Navbar() {
           >
             Explainable Risk
           </button>
+          <button 
+            onClick={() => scrollToSection('install-extension')}
+            className="hover:text-white transition-colors uppercase tracking-widest text-[11px] text-brand-light font-semibold"
+          >
+            Install Guide
+          </button>
         </nav>
 
         {/* Right: Actions */}
@@ -183,9 +189,15 @@ export default function Navbar() {
             </button>
             <button 
               onClick={() => scrollToSection('explainable-risk')}
-              className="text-left py-2 text-text-secondary hover:text-white"
+              className="text-left py-2 text-text-secondary hover:text-white border-b border-surface-border/50"
             >
               Explainable Risk
+            </button>
+            <button 
+              onClick={() => scrollToSection('install-extension')}
+              className="text-left py-2 text-brand-light font-semibold hover:text-white"
+            >
+              Install Guide
             </button>
           </div>
 
@@ -265,6 +277,19 @@ export default function Navbar() {
                 className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition-all"
               >
                 Add extension
+              </button>
+            </div>
+
+            <div className="pt-3 border-t border-slate-700/60 mt-3 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExtensionModal(false);
+                  scrollToSection('install-extension');
+                }}
+                className="text-[11px] text-blue-400 hover:text-blue-300 underline font-mono cursor-pointer"
+              >
+                Need help installing? View Step-by-Step Guide →
               </button>
             </div>
           </div>

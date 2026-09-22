@@ -143,7 +143,7 @@ async function checkBackendHealth() {
   for (const baseUrl of API_BASE_URLS) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
       const res = await fetch(`${baseUrl}/api/health`, { credentials: "omit", signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.ok) {
@@ -162,7 +162,7 @@ async function checkBackendHealth() {
   for (const baseUrl of API_BASE_URLS) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1500);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
       const res = await fetch(`${baseUrl}/`, { credentials: "omit", signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.ok) {
@@ -178,7 +178,7 @@ async function checkBackendHealth() {
 
   elements.statusPill.classList.add("offline");
   elements.statusText.textContent = "● OFFLINE";
-  elements.statusPill.title = "FastAPI backend unreachable on port 8001";
+  elements.statusPill.title = `FastAPI backend unreachable (${API_BASE_URLS[0]})`;
   return false;
 }
 
@@ -1013,7 +1013,7 @@ function showError(err) {
   } else if (!status || msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("net::ERR_CONNECTION_REFUSED")) {
     elements.errorTitle.textContent = "BACKEND OFFLINE";
     elements.errorMessage.textContent = "HireShield could not connect to the analysis server. Make sure the FastAPI backend is running.";
-    elements.errorDetails.textContent = `Target: ${activeBackendUrl}/api/scanner/analyze-content\nRun command: uvicorn app.main:app --port 8001`;
+    elements.errorDetails.textContent = `Target: ${activeBackendUrl}/api/scanner/analyze-content\nStatus: Unreachable (verify internet connection or backend status)`;
   } else if (status === 422) {
     elements.errorTitle.textContent = "INSUFFICIENT PAGE CONTENT";
     elements.errorMessage.textContent = msg || "Submitted content is too brief or invalid. Please ensure a complete visible job description is open on screen.";

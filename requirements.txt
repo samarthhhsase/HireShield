@@ -6,3 +6,4 @@ pydantic
 python-whois
 dnspython
 sqlalchemy
+email-validator

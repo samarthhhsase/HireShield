@@ -1,5 +1,7 @@
 # HireShield — AI-Powered Candidate Risk Intelligence Platform
 
+
+
 > **"Hire with confidence. Detect recruitment fraud and employment scams before they strike."**
 
 HireShield is an enterprise-grade AI risk intelligence platform engineered to evaluate recruitment postings, job offer vectors, and candidate references. By combining multimodal behavioral heuristics, linguistic urgency detection, network security telemetry, and an explainable risk calculation engine, HireShield detects employment fraud, advance-fee scams, credential harvesting fronts, and impersonation campaigns in real time.

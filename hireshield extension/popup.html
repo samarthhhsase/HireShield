@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HireShield — Recruitment Risk Intelligence</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="extension-wrapper">
+    <!-- Top Cyber Header -->
+    <header class="app-header">
+      <div class="brand-group">
+        <div class="shield-badge">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">HireShield</div>
+          <div class="brand-subtitle">RECRUITMENT SECURITY</div>
+        </div>
+      </div>
+      <div class="status-pill" id="backendStatusPill" title="FastAPI Engine: 127.0.0.1:8001">
+        <span class="status-indicator-dot"></span>
+        <span class="status-indicator-text" id="backendStatusText">● LIVE</span>
+      </div>
+    </header>
+
+    <!-- Navigation Bar: Scanner vs Extension -->
+    <nav class="nav-tabs-bar">
+      <button type="button" class="nav-tab-btn active" id="tabScannerBtn">
+        <span class="tab-icon">🛡️</span>
+        <span class="tab-label">Scanner</span>
+      </button>
+      <button type="button" class="nav-tab-btn" id="tabExtensionBtn">
+        <span class="tab-icon">🧩</span>
+        <span class="tab-label">Extension</span>
+        <span class="tab-badge-new">ADD</span>
+      </button>
+    </nav>
+
+    <!-- Main Dynamic Content Container -->
+    <main class="app-content">
+      
+      <!-- STATE 1: READY / IDLE -->
+      <section id="readyView" class="view-panel active">
+        <div class="target-card">
+          <div class="target-card-header">
+            <span class="mono-label">ACTIVE TARGET</span>
+            <span class="target-type-badge" id="readyTargetType">WEB PAGE</span>
+          </div>
+          <div class="target-title" id="readyJobTitle">Detecting active page...</div>
+          <div class="target-url" id="readyJobUrl">https://...</div>
+        </div>
+
+        <div class="action-box">
+          <button type="button" class="btn-primary cyber-scan-btn" id="startScanBtn">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-text">ANALYZE THIS JOB</span>
+          </button>
+          <div class="scan-footnote">
+            Extracts visible job posting &bull; Evaluates Layer A &amp; Layer B Risk Engine
+          </div>
+        </div>
+
+        <div class="specs-grid">
+          <div class="spec-card">
+            <div class="spec-icon">🧠</div>
+            <div class="spec-name">Layer B: NLP</div>
+            <div class="spec-desc">Fee &amp; identity scams</div>
+          </div>
+          <div class="spec-card">
+            <div class="spec-icon">🌐</div>
+            <div class="spec-name">Layer A: Infra</div>
+            <div class="spec-desc">SSL, DNS &amp; domain security</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATE 2: SCANNING / TERMINAL PIPELINE -->
+      <section id="scanningView" class="view-panel">
+        <div class="scanner-hero">
+          <div class="radar-box">
+            <div class="radar-sweep"></div>
+            <div class="radar-icon">🛡️</div>
+          </div>
+          <div class="scan-headline">SCANNING CURRENT PAGE</div>
+          <div class="scan-subheadline" id="scanStageHeadline">Extracting visible DOM content...</div>
+        </div>
+
+        <div class="terminal-container">
+          <div class="terminal-bar">
+            <span class="terminal-dot red"></span>
+            <span class="terminal-dot yellow"></span>
+            <span class="terminal-dot green"></span>
+            <span class="terminal-title">HIRESHIELD_PIPELINE.LOG</span>
+          </div>
+          <div class="terminal-body" id="pipelineStagesList">
+            <div class="pipeline-step done" id="stageExtract">
+              <span class="step-check">✓</span>
+              <span class="step-text">PAGE CONTENT EXTRACTED</span>
+            </div>
+            <div class="pipeline-step done" id="stageUrl">
+              <span class="step-check">✓</span>
+              <span class="step-text">URL IDENTIFIED</span>
+            </div>
+            <div class="pipeline-step running" id="stageNlp">
+              <span class="step-check">→</span>
+              <span class="step-text">NLP &amp; LINGUISTIC ANALYSIS</span>
+            </div>
+            <div class="pipeline-step waiting" id="stageBehavioral">
+              <span class="step-check">·</span>
+              <span class="step-text">BEHAVIORAL RED FLAGS CHECK</span>
+            </div>
+            <div class="pipeline-step waiting" id="stageRisk">
+              <span class="step-check">·</span>
+              <span class="step-text">RISK ENGINE CALCULATION</span>
+            </div>
+          </div>
+        </div>
+        <div class="pulse-indicator">ANALYZING...</div>
+      </section>
+
+      <!-- STATE 3: RESULTS / INTELLIGENCE REPORT -->
+      <section id="resultsView" class="view-panel">
+        <!-- Target Info Header -->
+        <div class="job-meta-card">
+          <div class="job-meta-top">
+            <span class="badge-source" id="resultSourceBadge">BROWSER FALLBACK</span>
+            <span class="badge-status" id="resultStatusBadge">RISK_ASSESSMENT_COMPLETE</span>
+          </div>
+          <div class="job-title-display" id="resultJobTitle">Software Engineer</div>
+          <div class="job-company-display" id="resultCompany">Company Name</div>
+          <div class="job-url-display" id="resultUrl">https://example.com/job</div>
+        </div>
+
+        <!-- Prominent Risk Score Gauge / Box -->
+        <div class="score-banner" id="scoreBanner">
+          <div class="score-banner-header">RISK SCORE</div>
+          <div class="score-display-row">
+            <div class="score-number-big" id="resultScoreValue">71</div>
+            <div class="score-denom" id="resultScoreDenom">/ 100</div>
+          </div>
+          <div class="risk-level-badge" id="resultRiskLevelBadge">HIGH</div>
+          <div class="score-subtext" id="resultScoreSubtext">Composite threat assessment from Layer A + B</div>
+        </div>
+
+        <!-- Analysis Layers Breakdown -->
+        <div class="section-card">
+          <div class="section-title-row">
+            <span class="section-title">ANALYSIS LAYERS</span>
+            <span class="section-tag" id="layerTag">4 VECTORS</span>
+          </div>
+
+          <div class="layers-list">
+            <!-- Behavioral Layer -->
+            <div class="layer-item">
+              <div class="layer-header-row">
+                <span class="layer-name">Behavioral</span>
+                <span class="layer-val" id="valBehavioral">ANALYZED</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar" id="barBehavioral" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Linguistic Layer -->
+            <div class="layer-item">
+              <div class="layer-header-row">
+                <span class="layer-name">Linguistic</span>
+                <span class="layer-val" id="valLinguistic">ANALYZED</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar" id="barLinguistic" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Structural Layer -->
+            <div class="layer-item">
+              <div class="layer-header-row">
+                <span class="layer-name">Structural</span>
+                <span class="layer-val" id="valStructural">ANALYZED</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar" id="barStructural" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Technical Layer -->
+            <div class="layer-item">
+              <div class="layer-header-row">
+                <span class="layer-name">Technical</span>
+                <span class="layer-val" id="valTechnical">ANALYZED</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-bar" id="barTechnical" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RED FLAGS Section -->
+        <div class="section-card red-flags-card" id="redFlagsCard">
+          <div class="section-title-row">
+            <span class="section-title"><span class="bullet-red">🔴</span> RED FLAGS</span>
+            <span class="section-badge-count red" id="redFlagsCountBadge">0 DETECTED</span>
+          </div>
+          <div class="signals-list" id="redFlagsListContainer">
+            <!-- Dynamically populated via popup.js -->
+          </div>
+        </div>
+
+        <!-- TRUST SIGNALS Section -->
+        <div class="section-card trust-signals-card" id="trustSignalsCard">
+          <div class="section-title-row">
+            <span class="section-title"><span class="bullet-green">🟢</span> TRUST SIGNALS</span>
+            <span class="section-badge-count green" id="trustSignalsCountBadge">0 DETECTED</span>
+          </div>
+          <div class="trust-list" id="trustSignalsListContainer">
+            <!-- Dynamically populated via popup.js -->
+          </div>
+        </div>
+
+        <!-- VERIFICATION AUDIT Section (Why Real / Why Fake, What We Checked & How Verified) -->
+        <div class="section-card audit-card" id="verificationAuditCard">
+          <div class="section-title-row">
+            <span class="section-title"><span class="bullet-audit">🔍</span> VERIFICATION AUDIT</span>
+            <span class="section-badge-count green" id="auditVerdictBadge">VERIFIED REAL</span>
+          </div>
+          
+          <div class="audit-headline" id="auditHeadline">Why This Job Appears REAL &amp; Legitimate</div>
+          <p class="audit-explanation" id="auditVerdictExplanation">
+            Multi-vector analysis completed across all security checkpoints.
+          </p>
+
+          <div class="audit-subheading">WHAT WE CHECKED &amp; HOW IT WAS VERIFIED</div>
+          
+          <div class="audit-checks-list" id="auditChecksListContainer">
+            <!-- Dynamically populated via popup.js -->
+          </div>
+
+          <div class="audit-methodology-footer" id="auditMethodology">
+            Multi-vector cross-referencing across DNS, WHOIS, TLS, NLP heuristics, and enterprise ATS platform whitelists.
+          </div>
+        </div>
+
+        <!-- WHY? Expandable Drawer -->
+        <div class="section-card why-drawer-card" id="whyDrawerCard">
+          <button type="button" class="why-drawer-toggle" id="whyDrawerToggle">
+            <div class="why-toggle-left">
+              <span class="why-icon">💡</span>
+              <span class="why-title">WHY?</span>
+              <span class="why-subtitle">Explainable Intelligence</span>
+            </div>
+            <span class="why-arrow" id="whyDrawerArrow">▼</span>
+          </button>
+          
+          <div class="why-drawer-content" id="whyDrawerContent" style="display: none;">
+            <div class="explanation-box" id="explanationText">
+              Multiple high-risk recruitment indicators were detected.
+            </div>
+
+            <!-- Recommendations list -->
+            <div class="recommendations-box" id="recommendationsBox">
+              <div class="rec-header">🛡️ CANDIDATE ADVISORY</div>
+              <ul class="rec-list" id="recommendationsList">
+                <!-- Dynamically populated -->
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="result-actions">
+          <button type="button" class="btn-primary" id="viewFullAnalysisBtn">
+            <span>VIEW FULL ANALYSIS</span>
+            <span class="action-arrow">↗</span>
+          </button>
+          <button type="button" class="btn-secondary" id="scanAgainBtn">
+            <span>↺ SCAN AGAIN</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- STATE 4: ERROR VIEW -->
+      <section id="errorView" class="view-panel">
+        <div class="error-card">
+          <div class="error-icon" id="errorIcon">⚠️</div>
+          <div class="error-title" id="errorTitle">BACKEND OFFLINE</div>
+          <div class="error-message" id="errorMessage">
+            HireShield could not connect to the analysis server. Make sure the FastAPI backend is running on http://127.0.0.1:8001.
+          </div>
+          <div class="error-details mono-code" id="errorDetails">Connection refused</div>
+        </div>
+        <button type="button" class="btn-primary retry-btn" id="errorRetryBtn">
+          RETRY ANALYSIS
+        </button>
+      </section>
+
+      <!-- STATE 5: EXTENSION VIEW (Status & Integration) -->
+      <section id="extensionView" class="view-panel">
+        <div class="target-card">
+          <div class="target-card-header">
+            <span class="mono-label">BROWSER INTEGRATION</span>
+            <span class="target-type-badge">INSTALLED &bull; ACTIVE</span>
+          </div>
+          <div class="target-title">HireShield Browser Client</div>
+          <div class="target-url">Recruitment Threat Detection &bull; v1.0.0 (Manifest V3)</div>
+        </div>
+
+        <div class="spec-card" style="margin-top: 10px;">
+          <div class="spec-name">Runtime Telemetry</div>
+          <div class="spec-desc mono-code" style="margin-top: 4px; font-size: 10.5px; line-height: 1.5;">
+            &bull; Analysis Engine: http://127.0.0.1:8001<br>
+            &bull; Scopes: Active Tab Heuristics &amp; DOM Parsing<br>
+            &bull; Privacy: Zero full-browsing history collection
+          </div>
+        </div>
+
+        <button type="button" class="btn-primary" id="openExtensionsPageBtn" style="margin-top: 14px;">
+          <span>🚀 OPEN CHROME://EXTENSIONS</span>
+        </button>
+
+        <button type="button" class="btn-secondary" id="backToScannerBtn" style="margin-top: 8px;">
+          <span>← BACK TO SCANNER</span>
+        </button>
+      </section>
+
+    </main>
+
+    <!-- Footer Security Signature -->
+    <footer class="app-footer">
+      <span class="footer-secured">🛡️ Enterprise Cyber Intelligence &bull; v1.0.0</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

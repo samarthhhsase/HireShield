@@ -1,17 +1,20 @@
 import logging
 from typing import Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.db.database import Base, engine, SessionLocal
 from app.models.candidate import Candidate
+from app.models.user import User
 from sqlalchemy import or_, desc
 from app.api.auth import router as auth_router
 from app.api.risk import router as risk_router
 from app.api.candidates import router as candidates_router
-from app.services.auth_service import seed_default_analyst
+from app.api.scanner import router as scanner_router
+from app.services.risk_pipeline import categorize_signals
+from app.services.auth_service import seed_default_analyst, get_optional_current_user
 from app.services.candidate_service import seed_default_candidates, auto_save_scan
 from app.services.scraper import (
     extract_job_page,
@@ -55,6 +58,21 @@ async def lifespan(app: FastAPI):
             pass
 
         Base.metadata.create_all(bind=engine)
+        try:
+            with engine.connect() as conn:
+                cand_cols = [r[1] for r in conn.exec_driver_sql("PRAGMA table_info(candidates)").fetchall()]
+                if cand_cols and "input_type" not in cand_cols:
+                    logger.info("Adding input_type column to candidates table...")
+                    conn.exec_driver_sql("ALTER TABLE candidates ADD COLUMN input_type VARCHAR(20) DEFAULT 'URL'")
+                    conn.commit()
+                scan_cols = [r[1] for r in conn.exec_driver_sql("PRAGMA table_info(scans)").fetchall()]
+                if scan_cols and "input_type" not in scan_cols:
+                    logger.info("Adding input_type column to scans table...")
+                    conn.exec_driver_sql("ALTER TABLE scans ADD COLUMN input_type VARCHAR(20) DEFAULT 'URL'")
+                    conn.commit()
+        except Exception as mig_err:
+            logger.warning(f"Schema check error: {mig_err}")
+
         with SessionLocal() as db:
             seed_default_analyst(db)
             seed_default_candidates(db)
@@ -85,6 +103,8 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(risk_router, prefix="/api")
 app.include_router(candidates_router, prefix="/api")
 app.include_router(candidates_router)
+app.include_router(scanner_router, prefix="/api")
+app.include_router(scanner_router)
 
 
 class ScanRequest(BaseModel):
@@ -106,6 +126,9 @@ def home():
         "message": "Candidate risk intelligence & scam detection backend is ready",
         "scanner_endpoints": {
             "url_scan": "/api/scan",
+            "pdf_scan": "/api/scanner/analyze-pdf",
+            "form_scan": "/api/scanner/analyze-form",
+            "text_scan": "/api/scanner/analyze-text",
             "content_fallback": "/api/scanner/analyze-content",
             "risk_engine": "/api/risk/analyze",
         },
@@ -130,7 +153,10 @@ def health():
 
 
 @app.post("/api/scan")
-def scan_job(request: ScanRequest):
+def scan_job(
+    request: ScanRequest,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
     """
     Execute recruitment risk analysis on a target URL.
     Distinguishes server access limitations (e.g. HTTP 403) from fraud signals.
@@ -248,23 +274,33 @@ def scan_job(request: ScanRequest):
         "scores": scores,
         "layers": layers,
         "risk_score": result["risk_score"],
+        "score": result["risk_score"],
         "risk_level": result["risk_level"],
         "legitimacy_score": result.get("legitimacy_score"),
         "fake_job_probability": result.get("fake_job_probability"),
         "verdict": result.get("verdict"),
+        "input_type": "URL",
+        "inputType": "URL",
         "red_flags": red_flags,
+        "signals": red_flags,
         "green_flags": result.get("green_flags", []),
+        "positive_signals": [g.get("message", "") if isinstance(g, dict) else str(g) for g in result.get("green_flags", [])],
+        "categories": categorize_signals(red_flags, technical_available=True),
         "recommendations": result.get("recommendations", []),
         "verification_audit": result.get("verification_audit"),
         "explanation": result.get("explanation"),
+        "summary": result.get("explanation") or "URL recruitment scan completed.",
         "technical_checks": technical["checks"],
         "url_intelligence": technical["url_intelligence"],
         "content_intelligence": content_intelligence,
     }
 
+    user_id = current_user.id if current_user else None
+    scan_response["user_id"] = user_id
+
     try:
         with SessionLocal() as db:
-            saved = auto_save_scan(db, scan_response)
+            saved = auto_save_scan(db, scan_response, user_id=user_id)
             if saved and "id" in saved:
                 scan_response["id"] = saved["id"]
     except Exception as exc:
@@ -275,7 +311,10 @@ def scan_job(request: ScanRequest):
 
 @app.post("/api/scanner/analyze-content")
 @app.post("/api/scan/content")
-def analyze_browser_content(request: ContentScanRequest):
+def analyze_browser_content(
+    request: ContentScanRequest,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
     """
     Browser-content fallback endpoint:
     Processes page content supplied by the browser or browser extension through
@@ -406,15 +445,22 @@ def analyze_browser_content(request: ContentScanRequest):
         },
         "layers": layers,
         "risk_score": result["risk_score"],
+        "score": result["risk_score"],
         "risk_level": result["risk_level"],
         "legitimacy_score": result.get("legitimacy_score"),
         "fake_job_probability": result.get("fake_job_probability"),
         "verdict": result.get("verdict"),
+        "input_type": "TEXT" if not url else "URL",
+        "inputType": "TEXT" if not url else "URL",
         "red_flags": result["red_flags"],
+        "signals": result["red_flags"],
         "green_flags": result.get("green_flags", []),
+        "positive_signals": [g.get("message", "") if isinstance(g, dict) else str(g) for g in result.get("green_flags", [])],
+        "categories": categorize_signals(result["red_flags"], technical_available=bool(url)),
         "recommendations": result.get("recommendations", []),
         "verification_audit": result.get("verification_audit"),
         "explanation": result["explanation"],
+        "summary": result["explanation"],
         "technical_checks": technical["checks"],
         "url_intelligence": technical["url_intelligence"],
         "pipeline_stages": pipeline_stages,
@@ -426,9 +472,12 @@ def analyze_browser_content(request: ContentScanRequest):
         },
     }
 
+    user_id = current_user.id if current_user else None
+    content_response["user_id"] = user_id
+
     try:
         with SessionLocal() as db:
-            saved = auto_save_scan(db, content_response)
+            saved = auto_save_scan(db, content_response, user_id=user_id)
             if saved and "id" in saved:
                 content_response["id"] = saved["id"]
     except Exception as exc:

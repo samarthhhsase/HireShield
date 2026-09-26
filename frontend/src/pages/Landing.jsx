@@ -55,8 +55,24 @@ export default function Landing() {
 
             {/* Supporting Text */}
             <p className="text-base sm:text-lg text-text-secondary leading-relaxed max-w-2xl font-sans">
-              HireShield analyzes job postings, recruitment domains, AI/NLP signals and technical evidence to identify potential hiring scams and provide explainable risk intelligence.
+              HireShield analyzes job postings, offer PDFs, Google recruitment forms, and recruiter messages through a unified risk engine to expose fake jobs, advance-fee traps, and credential harvesting.
             </p>
+
+            {/* Multi-Input Capability Badges */}
+            <div className="flex items-center gap-2 flex-wrap text-xs font-mono text-text-secondary pt-1">
+              <span className="px-2.5 py-1 rounded bg-surface-100 border border-surface-border">
+                🌐 Job URLs
+              </span>
+              <span className="px-2.5 py-1 rounded bg-surface-100 border border-surface-border">
+                📄 Offer PDFs
+              </span>
+              <span className="px-2.5 py-1 rounded bg-surface-100 border border-surface-border">
+                📝 Google Forms
+              </span>
+              <span className="px-2.5 py-1 rounded bg-surface-100 border border-surface-border">
+                ✍️ Pasted Job Text
+              </span>
+            </div>
 
             {/* CTAs */}
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">

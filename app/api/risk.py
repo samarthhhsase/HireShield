@@ -8,9 +8,11 @@ Includes input sanitization, SSRF protection, and graceful error handling.
 import logging
 from typing import Optional, List, Dict, Any
 from urllib.parse import urlparse
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
+from app.models.user import User
+from app.services.auth_service import get_optional_current_user
 from app.risk_engine import analyze_job_risk
 from app.risk_engine.domain.dns import is_private_ip, is_ip_address
 from app.db.database import SessionLocal
@@ -33,6 +35,7 @@ class RiskAnalyzeRequest(BaseModel):
 class RiskAnalyzeResponse(BaseModel):
     success: bool
     risk_score: int
+    score: Optional[int] = None
     risk_level: str
     confidence: float
     summary: str
@@ -42,6 +45,9 @@ class RiskAnalyzeResponse(BaseModel):
     verification_audit: Optional[Dict[str, Any]] = None
     override: Optional[Dict[str, Any]] = None
     analysis: Dict[str, Any]
+    categories: Optional[Dict[str, Any]] = None
+    input_type: Optional[str] = "URL"
+    inputType: Optional[str] = "URL"
     id: Optional[str] = None
     candidate_id: Optional[str] = None
 
@@ -88,7 +94,10 @@ def validate_and_sanitize_url(url_str: Optional[str]) -> Optional[str]:
 
 
 @router.post("/analyze", response_model=RiskAnalyzeResponse)
-def analyze_risk_endpoint(payload: RiskAnalyzeRequest):
+def analyze_risk_endpoint(
+    payload: RiskAnalyzeRequest,
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
     """
     Evaluates multi-vector recruitment fraud risk across NLP, Domain intelligence,
     Company verification, Recruiter credibility, and Salary anomaly engines.
@@ -122,6 +131,15 @@ def analyze_risk_endpoint(payload: RiskAnalyzeRequest):
             source=sanitized_source
         )
 
+        from app.services.risk_pipeline import categorize_signals
+
+        resolved_input_type = "URL" if sanitized_url else "TEXT"
+        result["score"] = result.get("risk_score", 0)
+        result["input_type"] = resolved_input_type
+        result["inputType"] = resolved_input_type
+        result["categories"] = categorize_signals(result.get("signals", []), technical_available=bool(sanitized_url))
+        user_id = current_user.id if current_user else None
+
         # Persist the hybrid risk scan to SQLite so it can be retrieved via /candidates/{id} or /risk-analysis/{id}
         record_id = None
         try:
@@ -129,6 +147,9 @@ def analyze_risk_endpoint(payload: RiskAnalyzeRequest):
                 cand_dict = {
                     "url": sanitized_url,
                     "final_url": sanitized_url,
+                    "user_id": user_id,
+                    "input_type": resolved_input_type,
+                    "inputType": resolved_input_type,
                     "job": {
                         "title": sanitized_company or "Evaluated Position",
                         "company": sanitized_company,
@@ -146,8 +167,9 @@ def analyze_risk_endpoint(payload: RiskAnalyzeRequest):
                     "verification_audit": result.get("verification_audit", {}),
                     "recommendations": result.get("recommendations", []),
                     "explanation": result.get("summary", ""),
+                    "categories": result["categories"],
                 }
-                saved = auto_save_scan(db, cand_dict)
+                saved = auto_save_scan(db, cand_dict, user_id=user_id)
                 if saved and "id" in saved:
                     record_id = saved["id"]
         except Exception as save_err:
@@ -155,6 +177,7 @@ def analyze_risk_endpoint(payload: RiskAnalyzeRequest):
 
         result["id"] = record_id
         result["candidate_id"] = record_id
+        return result
         return result
 
     except HTTPException:

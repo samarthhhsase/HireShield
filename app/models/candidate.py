@@ -21,6 +21,8 @@ class Candidate(Base):
     verdict = Column(String(50), nullable=True)
     legitimacy_score = Column(Integer, nullable=True)
     fake_job_probability = Column(Float, nullable=True)
+    input_type = Column(String(20), default="URL")
+    user_id = Column(String(36), nullable=True, index=True)
 
     # JSON stored as Text for foolproof SQLite compatibility
     scores_json = Column(Text, nullable=True, default="{}")
@@ -130,6 +132,9 @@ class Candidate(Base):
             "explanation": self.explanation,
             "content_analyzed": True,
             "fetch_status": "FETCH_SUCCESS",
+            "input_type": self.input_type or "URL",
+            "inputType": self.input_type or "URL",
+            "user_id": self.user_id,
             "isDemoData": self.is_demo_data,
             "is_demo_data": self.is_demo_data,
             "scannedAt": self.scanned_at.isoformat() if self.scanned_at else (self.created_at.isoformat() if self.created_at else None),
@@ -141,6 +146,7 @@ class Scan(Base):
     __tablename__ = "scans"
 
     id = Column(String(50), primary_key=True, default=lambda: f"SCAN-{uuid.uuid4().hex[:8].upper()}")
+    user_id = Column(String(36), nullable=True, index=True)
     target_url = Column(String(1000), nullable=True)
     final_url = Column(String(1000), nullable=True)
     title = Column(String(255), nullable=True)
@@ -148,6 +154,7 @@ class Scan(Base):
     risk_score = Column(Integer, default=0)
     risk_level = Column(String(20), default="LOW")
     verdict = Column(String(50), nullable=True)
+    input_type = Column(String(20), default="URL")
     raw_payload_json = Column(Text, nullable=True, default="{}")
     scanned_at = Column(DateTime, default=datetime.utcnow)
 
@@ -158,10 +165,13 @@ class Scan(Base):
             payload = {}
         return {
             "id": self.id,
+            "user_id": self.user_id,
             "url": self.target_url,
             "final_url": self.final_url,
             "title": self.title,
             "company": self.company,
+            "input_type": self.input_type or "URL",
+            "inputType": self.input_type or "URL",
             "risk_score": self.risk_score,
             "risk_level": self.risk_level,
             "verdict": self.verdict,

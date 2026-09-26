@@ -7,7 +7,6 @@ export default function BackendStatusBadge({ compact = false }) {
   const [status, setStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
   const [latency, setLatency] = useState(null);
   const [lastChecked, setLastChecked] = useState(null);
-  const portLabel = API_BASE_URL.split(':').pop().replace(/[^0-9]/g, '') || '8001';
 
   const performHealthCheck = async () => {
     try {

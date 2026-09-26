@@ -214,11 +214,27 @@ def get_candidates(
     db: Session,
     search: Optional[str] = None,
     risk_level: Optional[str] = None,
+    user_id: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
 ) -> List[Dict[str, Any]]:
-    """Query candidates with optional text search and threat level filtering."""
+    """Query candidates with optional text search, threat level filtering, and user isolation."""
     query = db.query(Candidate)
+
+    if user_id:
+        query = query.filter(
+            or_(
+                Candidate.user_id == user_id,
+                Candidate.is_demo_data == True,
+            )
+        )
+    else:
+        query = query.filter(
+            or_(
+                Candidate.user_id.is_(None),
+                Candidate.is_demo_data == True,
+            )
+        )
 
     if search:
         s = f"%{search.strip()}%"
@@ -238,14 +254,37 @@ def get_candidates(
     return [c.to_dict() for c in records]
 
 
-def get_candidate_by_id(db: Session, candidate_id: str) -> Optional[Dict[str, Any]]:
-    """Retrieve a single candidate by unique ID."""
+def get_candidate_by_id(
+    db: Session,
+    candidate_id: str,
+    user_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve a single candidate by unique ID.
+    Enforces authorization:
+    - Demo data is publicly accessible.
+    - User-created scans can only be accessed by their creator (returns {"_forbidden": True} if unauthorized).
+    """
     record = db.query(Candidate).filter(Candidate.id == candidate_id).first()
-    return record.to_dict() if record else None
+    if not record:
+        return None
+
+    if record.is_demo_data:
+        return record.to_dict()
+
+    if record.user_id:
+        if not user_id or record.user_id != user_id:
+            return {"_forbidden": True, "id": record.id}
+
+    return record.to_dict()
 
 
-def create_candidate(db: Session, payload: CandidateCreate) -> Dict[str, Any]:
-    """Persist a new candidate/job scan dossier to SQLite."""
+def create_candidate(
+    db: Session,
+    payload: CandidateCreate,
+    user_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Persist a new candidate/job scan dossier to SQLite associated with user_id."""
     resolved_id = payload.id or f"HS-2026-{uuid.uuid4().hex[:6].upper()}"
     
     # Check if ID already exists
@@ -267,9 +306,11 @@ def create_candidate(db: Session, payload: CandidateCreate) -> Dict[str, Any]:
     )
     resolved_company = payload.company or (payload.job.company if payload.job else None)
     resolved_preview = payload.text_preview or (payload.job.text_preview if payload.job else None)
+    effective_user_id = user_id or getattr(payload, "user_id", None)
 
     cand = Candidate(
         id=resolved_id,
+        user_id=effective_user_id,
         candidate_name=resolved_name,
         title=resolved_title,
         company=resolved_company,
@@ -281,6 +322,7 @@ def create_candidate(db: Session, payload: CandidateCreate) -> Dict[str, Any]:
         verdict=payload.verdict,
         legitimacy_score=payload.legitimacy_score,
         fake_job_probability=payload.fake_job_probability,
+        input_type=payload.input_type or "URL",
         explanation=payload.explanation,
         is_demo_data=bool(payload.is_demo_data or payload.isDemoData),
         created_at=datetime.utcnow(),
@@ -297,22 +339,35 @@ def create_candidate(db: Session, payload: CandidateCreate) -> Dict[str, Any]:
     db.commit()
     db.refresh(cand)
 
-    logger.info(f"Persisted candidate dossier: {cand.id} ({cand.candidate_name})")
+    logger.info(f"Persisted candidate dossier: {cand.id} ({cand.candidate_name}) [user_id={effective_user_id}]")
     return cand.to_dict()
 
 
-def auto_save_scan(db: Session, scan_result: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Automatically persist live scan results into the candidate / job registry."""
+def auto_save_scan(
+    db: Session,
+    scan_result: Dict[str, Any],
+    user_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Automatically persist live scan results into the candidate / job registry associated with user."""
     try:
+        effective_user_id = user_id or scan_result.get("user_id")
         url = scan_result.get("url") or scan_result.get("final_url")
+        input_type = scan_result.get("input_type") or scan_result.get("inputType") or "URL"
         job_info = scan_result.get("job") or {}
         title = job_info.get("title") or "Recruitment Target"
         company = job_info.get("company")
         text_preview = job_info.get("text_preview") or ""
 
-        # Avoid spamming duplicate identical URLs within seconds
+        # Avoid spamming duplicate identical URLs within seconds for same user
         if url:
-            existing = db.query(Candidate).filter(Candidate.url == url).first()
+            query = db.query(Candidate).filter(Candidate.url == url)
+            if effective_user_id:
+                existing = query.filter(Candidate.user_id == effective_user_id).first()
+            else:
+                existing = query.filter(
+                    or_(Candidate.user_id.is_(None), Candidate.is_demo_data == True)
+                ).first()
+
             if existing:
                 # Update existing record with newest analysis
                 existing.risk_score = scan_result.get("risk_score", existing.risk_score)
@@ -320,6 +375,7 @@ def auto_save_scan(db: Session, scan_result: Dict[str, Any]) -> Optional[Dict[st
                 existing.verdict = scan_result.get("verdict", existing.verdict)
                 existing.legitimacy_score = scan_result.get("legitimacy_score", existing.legitimacy_score)
                 existing.fake_job_probability = scan_result.get("fake_job_probability", existing.fake_job_probability)
+                existing.input_type = input_type
                 existing.scores = scan_result.get("scores", existing.scores)
                 existing.red_flags = scan_result.get("red_flags", existing.red_flags)
                 existing.green_flags = scan_result.get("green_flags", existing.green_flags)
@@ -331,9 +387,10 @@ def auto_save_scan(db: Session, scan_result: Dict[str, Any]) -> Optional[Dict[st
                 db.refresh(existing)
                 return existing.to_dict()
 
-        # Also persist to Scans audit table for activity telemetry
+        # Also persist to Scans audit table for activity telemetry and user scan history
         try:
             scan_log = Scan(
+                user_id=effective_user_id,
                 target_url=url,
                 final_url=scan_result.get("final_url") or url,
                 title=title,
@@ -341,6 +398,7 @@ def auto_save_scan(db: Session, scan_result: Dict[str, Any]) -> Optional[Dict[st
                 risk_score=scan_result.get("risk_score", 0),
                 risk_level=scan_result.get("risk_level", "LOW"),
                 verdict=scan_result.get("verdict"),
+                input_type=input_type,
                 raw_payload_json=json.dumps(scan_result),
                 scanned_at=datetime.utcnow(),
             )
@@ -361,6 +419,7 @@ def auto_save_scan(db: Session, scan_result: Dict[str, Any]) -> Optional[Dict[st
             verdict=scan_result.get("verdict"),
             legitimacy_score=scan_result.get("legitimacy_score"),
             fake_job_probability=scan_result.get("fake_job_probability"),
+            input_type=input_type,
             scores=scan_result.get("scores", {}),
             red_flags=scan_result.get("red_flags", []),
             green_flags=scan_result.get("green_flags", []),
@@ -370,10 +429,47 @@ def auto_save_scan(db: Session, scan_result: Dict[str, Any]) -> Optional[Dict[st
             explanation=scan_result.get("explanation"),
             is_demo_data=False,
         )
-        return create_candidate(db, cand_create)
+        return create_candidate(db, cand_create, user_id=effective_user_id)
     except Exception as exc:
         logger.warning(f"Could not auto-save scan as candidate: {exc}")
         return None
+
+
+def get_user_scans(
+    db: Session,
+    user_id: str,
+    skip: int = 0,
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """Retrieve scans strictly belonging to the specified user."""
+    scans = (
+        db.query(Scan)
+        .filter(Scan.user_id == user_id)
+        .order_by(desc(Scan.scanned_at))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return [s.to_dict() for s in scans]
+
+
+def get_user_scan_by_id(
+    db: Session,
+    scan_id: str,
+    user_id: str,
+) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve a specific scan by ID, enforcing strict ownership:
+    - Returns None if scan does not exist
+    - Returns {"_forbidden": True} if scan exists but belongs to a different user
+    - Returns scan dictionary if owned by requesting user
+    """
+    scan = db.query(Scan).filter(Scan.id == scan_id).first()
+    if not scan:
+        return None
+    if scan.user_id != user_id:
+        return {"_forbidden": True, "id": scan.id}
+    return scan.to_dict()
 
 
 def get_activity_log(db: Session, limit: int = 50) -> List[Dict[str, Any]]:
@@ -391,6 +487,8 @@ def get_activity_log(db: Session, limit: int = 50) -> List[Dict[str, Any]]:
                 "riskScore": s.risk_score,
                 "riskLevel": s.risk_level,
                 "verdict": s.verdict,
+                "inputType": getattr(s, "input_type", "URL") or "URL",
+                "input_type": getattr(s, "input_type", "URL") or "URL",
             }
             for s in scans
         ]
@@ -407,6 +505,8 @@ def get_activity_log(db: Session, limit: int = 50) -> List[Dict[str, Any]]:
             "riskScore": c.risk_score,
             "riskLevel": c.risk_level,
             "verdict": c.verdict,
+            "inputType": getattr(c, "input_type", "URL") or "URL",
+            "input_type": getattr(c, "input_type", "URL") or "URL",
         }
         for c in candidates
     ]
@@ -426,11 +526,13 @@ def get_reports_list(db: Session, limit: int = 100) -> List[Dict[str, Any]]:
     ]
 
 
-def delete_candidate(db: Session, candidate_id: str) -> bool:
-    """Delete a candidate dossier from database by ID."""
+def delete_candidate(db: Session, candidate_id: str, user_id: Optional[str] = None) -> Optional[bool]:
+    """Delete a candidate dossier from database by ID with ownership enforcement."""
     record = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if not record:
         return False
+    if record.user_id and user_id and record.user_id != user_id:
+        return None  # forbidden flag
     db.delete(record)
     db.commit()
     logger.info(f"Deleted candidate dossier: {candidate_id}")

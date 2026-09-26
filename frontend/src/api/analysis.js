@@ -43,6 +43,85 @@ export async function analyzePageContent({ url, title, company, content }) {
 }
 
 /**
+ * Analyze a job/offer PDF document.
+ * Calls backend endpoint: POST /api/scanner/analyze-pdf
+ *
+ * @param {File} file - PDF file to upload and scan
+ * @param {Object} [meta] - Optional metadata { company, title }
+ * @returns {Promise<Object>} Formatted risk intelligence report
+ */
+export async function scanJobPdf(file, { company = '', title = '' } = {}) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (company) formData.append('company', company);
+  if (title) formData.append('title', title);
+
+  const response = await apiClient.post('/api/scanner/analyze-pdf', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout: 30000,
+  });
+
+  if (response.data && response.data.success !== false) {
+    saveScanToSession(response.data);
+  }
+
+  return {
+    ...response.data,
+    latencyMs: response.latencyMs,
+  };
+}
+
+/**
+ * Analyze a Google Form or recruitment form URL.
+ * Calls backend endpoint: POST /api/scanner/analyze-form
+ *
+ * @param {string} url - Target Google Form URL
+ * @returns {Promise<Object>} Formatted risk intelligence report
+ */
+export async function scanJobForm(url) {
+  const response = await apiClient.post('/api/scanner/analyze-form', { url }, {
+    timeout: 20000,
+  });
+
+  if (response.data && response.data.success !== false) {
+    saveScanToSession(response.data);
+  }
+
+  return {
+    ...response.data,
+    latencyMs: response.latencyMs,
+  };
+}
+
+/**
+ * Analyze raw pasted job description or recruitment message text.
+ * Calls backend endpoint: POST /api/scanner/analyze-text
+ *
+ * @param {Object} payload - { text, title, company }
+ * @returns {Promise<Object>} Formatted risk intelligence report
+ */
+export async function scanJobText({ text, title = '', company = '' }) {
+  const response = await apiClient.post('/api/scanner/analyze-text', {
+    text,
+    title,
+    company,
+  }, {
+    timeout: 15000,
+  });
+
+  if (response.data && response.data.success !== false) {
+    saveScanToSession(response.data);
+  }
+
+  return {
+    ...response.data,
+    latencyMs: response.latencyMs,
+  };
+}
+
+/**
  * Check backend liveness.
  * Calls actual backend endpoint: GET /health
  */
@@ -86,13 +165,15 @@ export function getSessionScans() {
 export function saveScanToSession(scanData) {
   try {
     const existing = getSessionScans();
-    // Unique by URL or timestamp
     const item = {
-      id: `SCAN-${Date.now().toString(36).toUpperCase()}`,
+      id: scanData.id || `SCAN-${Date.now().toString(36).toUpperCase()}`,
       scannedAt: new Date().toISOString(),
       ...scanData,
     };
-    const updated = [item, ...existing.filter((s) => s.url !== scanData.url)].slice(0, 50);
+    const updated = [
+      item,
+      ...existing.filter((s) => (s.id && item.id ? s.id !== item.id : s.url !== scanData.url)),
+    ].slice(0, 50);
     sessionStorage.setItem(SESSION_SCANS_KEY, JSON.stringify(updated));
     return item;
   } catch (err) {

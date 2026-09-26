@@ -1,7 +1,37 @@
 import React from 'react';
 import { Lock, Unlock, Calendar, Globe, Server, CornerDownRight, CheckCircle2, XCircle } from 'lucide-react';
 
-export default function TechnicalChecks({ checks = {} }) {
+export default function TechnicalChecks({ checks = {}, inputType = 'URL' }) {
+  const isAvailable = checks?.available !== false && (inputType === 'URL' || checks?.ip || checks?.domain_age_days);
+
+  if (!isAvailable) {
+    return (
+      <div className="space-y-3 font-sans">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-mono font-semibold tracking-wider text-text-secondary uppercase">
+            Technical & Infrastructure Checks
+          </h4>
+          <span className="text-[11px] font-mono text-text-muted">
+            Network Layer
+          </span>
+        </div>
+        <div className="p-4 rounded-xl bg-surface-100 border border-surface-border text-center space-y-2">
+          <div className="w-9 h-9 rounded-xl bg-surface-200 border border-surface-border flex items-center justify-center text-text-muted mx-auto">
+            <Globe className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-surface-200 text-text-muted border border-surface-border">
+              UNAVAILABLE FOR THIS INPUT
+            </span>
+            <p className="text-xs text-text-muted mt-1.5 leading-relaxed font-sans">
+              Domain age, SSL certificates, and DNS resolution checks are only evaluated for live web URLs. No technical fraud penalty applied.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const {
     ssl_valid = false,
     domain_age_days = null,

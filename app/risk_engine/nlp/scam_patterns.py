@@ -20,6 +20,7 @@ GUARANTEED_JOB_PATTERNS = [
 # Suspicious Contact & Off-Platform Communication Methods
 SUSPICIOUS_CONTACT_PATTERNS = [
     (re.compile(r"\b(contact|reach|message|apply|send\s+(?:resume|cv)|chat)\s*(?:us|me|recruiter|team)?\s*(?:only\s+)?(?:via|on|through)?\s*(?:only\s+)?(whats\s*app|wa\.me|telegram|t\.me|signal)\b", re.I), "off_platform_chat_only", 30, "high"),
+    (re.compile(r"\b(whats\s*app|telegram|signal)\s+(?:only|recruiter\s*only|recruiter|contact|chat|messaging|interview|team)\b", re.I), "off_platform_chat_only", 30, "high"),
     (re.compile(r"\btelegram\s*(?:username|id|channel|handle)?\s*:\s*@?\w+", re.I), "telegram_contact", 25, "medium"),
     (re.compile(r"\b(whatsapp|wa\.me)\s*(?:number|contact|only)?\s*:\s*[\+\d\s\-\(\)]{8,}", re.I), "whatsapp_contact", 25, "medium"),
     (re.compile(r"\b(reach\s*out|dm\s*me)\s*on\s*hangouts\b", re.I), "hangouts_recruitment", 25, "high"),

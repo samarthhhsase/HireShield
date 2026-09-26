@@ -175,6 +175,39 @@ def get_current_user(
     return user
 
 
+def get_optional_current_user(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """
+    FastAPI dependency to optionally authenticate user via Bearer token.
+    - If no Authorization header is present: returns None.
+    - If an invalid or expired token is presented: raises 401 so caller can handle session expiry.
+    - If valid: returns the authenticated User instance.
+    """
+    if not auth or not auth.credentials:
+        return None
+
+    payload = verify_access_token(auth.credentials)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Your session has expired. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user_id = payload.get("sub") or payload.get("user_id")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is inactive or no longer exists.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
 def seed_default_analyst(db: Session):
     """Seed the default analyst credential (analyst@hireshield.ai / Password123!)."""
     default_email = "analyst@hireshield.ai"

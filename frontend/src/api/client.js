@@ -1,11 +1,16 @@
 import axios from 'axios';
 
-// Active FastAPI backend port is 8001
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
+// Resolve API Base URL from Vite environment variable (normalized without trailing slash)
+const rawBaseUrl = 
+  import.meta.env.VITE_API_URL || 
+  import.meta.env.VITE_API_BASE_URL || 
+  'https://hireshield-production.up.railway.app';
+
+export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -33,33 +38,55 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    const status = error.response ? error.response.status : 0;
     let formattedError = {
-      status: error.response ? error.response.status : 0,
+      status,
       message: 'An unexpected communication error occurred.',
       detail: null,
       isNetworkError: false,
+      isTimeout: false,
+      isAuthError: false,
       isValidationError: false,
       timestamp: new Date().toISOString(),
+      url: error.config?.url || '',
     };
 
-    if (!error.response) {
+    if (error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout')) {
+      formattedError.isTimeout = true;
+      formattedError.message = 'Backend request timed out.';
+      formattedError.detail = `The request to ${API_BASE_URL} exceeded ${error.config?.timeout || 30000}ms. The risk engine or target page may be under heavy load.`;
+    } else if (!error.response) {
       formattedError.isNetworkError = true;
       formattedError.message = 'Unable to connect to HireShield backend API.';
-      formattedError.detail = `Could not reach ${API_BASE_URL}. Ensure the FastAPI server is running with 'python -m uvicorn app.main:app --port 8001'.`;
-    } else if (error.response.status === 422) {
+      const isLocal = API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1');
+      formattedError.detail = isLocal
+        ? `Could not reach ${API_BASE_URL}. Ensure the local FastAPI server is running with 'python -m uvicorn app.main:app --port 8001'.`
+        : `Could not reach deployed HireShield backend at ${API_BASE_URL}. Verify network connectivity or check Railway deployment status.`;
+    } else if (status === 401) {
+      formattedError.isAuthError = true;
+      formattedError.message = 'Authentication required or session expired.';
+      formattedError.detail = error.response.data?.detail || 'Please sign in with your enterprise analyst credentials.';
+    } else if (status === 403) {
+      formattedError.isAuthError = true;
+      formattedError.message = 'Access forbidden.';
+      formattedError.detail = error.response.data?.detail || 'You do not have authorization to access this resource or candidate dossier.';
+    } else if (status === 404) {
+      formattedError.message = 'Requested API endpoint not found.';
+      formattedError.detail = error.response.data?.detail || `Endpoint ${error.config?.url || ''} was not found on ${API_BASE_URL}.`;
+    } else if (status === 422) {
       formattedError.isValidationError = true;
       const details = error.response.data?.detail;
       if (Array.isArray(details)) {
-        formattedError.message = details.map((d) => d.msg).join(', ');
+        formattedError.message = details.map((d) => d.msg || `${d.loc?.join('.')}: invalid`).join(', ');
         formattedError.detail = details;
       } else {
         formattedError.message = 'Invalid request parameters provided.';
         formattedError.detail = details;
       }
-    } else if (error.response.status === 400) {
+    } else if (status === 400) {
       formattedError.message = error.response.data?.detail || 'Request rejected by HireShield Risk Engine.';
       formattedError.detail = error.response.data?.detail;
-    } else if (error.response.status >= 500) {
+    } else if (status >= 500) {
       formattedError.message = 'HireShield backend internal server error.';
       formattedError.detail = error.response.data?.detail || 'The risk processing engine encountered an unexpected error.';
     } else {
@@ -71,3 +98,4 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+

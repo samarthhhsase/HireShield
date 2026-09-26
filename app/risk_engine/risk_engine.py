@@ -112,9 +112,13 @@ class RiskEngine:
 
         # Add NLP signals
         for f in nlp_features:
-            cat = "payment" if "fee" in f.get("feature", "") or "deposit" in f.get("feature", "") else (
-                "credential" if "aadhaar" in f.get("feature", "") or "otp" in f.get("feature", "") or "password" in f.get("feature", "") else "nlp"
-            )
+            feat_lower = f.get("feature", "").lower()
+            if any(w in feat_lower for w in ["fee", "deposit", "cash", "crypto"]):
+                cat = "payment"
+            elif any(w in feat_lower for w in ["aadhaar", "pan", "passport", "bank", "otp", "password", "pin", "credential", "government_id", "identity", "upi"]):
+                cat = "credential"
+            else:
+                cat = "nlp"
             aggregated_signals.append({
                 "category": cat,
                 "severity": f.get("severity", "medium"),

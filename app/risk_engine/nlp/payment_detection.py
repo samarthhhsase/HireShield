@@ -17,12 +17,17 @@ DISCLAIMER_PATTERNS = [
 
 # Explicit upfront payment demands
 PAYMENT_PATTERNS = [
-    (re.compile(r"\b(registration|processing|application|onboarding|admin|joining)\s*fees?\s*(of\s*)?(\$|₹|rs\.?|inr|usd)?\s*\d*\b", re.I), "registration_fee_request", 40, "critical"),
+    (re.compile(r"\b(upfront|registration|processing|application|onboarding|admin|joining|verification|mandatory)\s*fees?\s*(of\s*)?(\$|₹|rs\.?|inr|usd)?\s*\d*\b", re.I), "registration_fee_request", 40, "critical"),
     (re.compile(r"\b(security\s*deposit|refundable\s*deposit|caution\s*deposit)\s*(of\s*)?(\$|₹|rs\.?|inr|usd)?\s*\d*\b", re.I), "security_deposit_request", 40, "critical"),
     (re.compile(r"\b(training|course|certification|courier|delivery|kit|materials?|laptop)\s*fees?\s*(required|must\s+be\s+paid|applicable|of\s*(\$|₹|rs\.?|inr|usd)?\s*\d*|\b)", re.I), "mandatory_training_or_courier_fee", 35, "critical"),
+    (re.compile(r"\b(fees?|charges?|deposit|amount)\s+(?:of\s+(\$|₹|rs\.?|inr|usd)?\s*\d+[\d,]*\s+)?for\s+(training(?:\s*kit)?|materials?|laptop|equipment|courier|verification|id\s*card)\b", re.I), "mandatory_training_or_courier_fee", 35, "critical"),
     (re.compile(r"\b(pay|purchase|buy)\s+(your\s+own\s+)?(laptop|equipment|home\s+office\s+kit|software\s+license)\s*(first|in\s+advance|before)\b", re.I), "equipment_payment_scheme", 40, "critical"),
     (re.compile(r"\b(fee|charges?|amount)\s+(is\s+)?required\s+before\s+(interview|selection|joining|offer)\b", re.I), "pre_employment_fee_demand", 45, "critical"),
     (re.compile(r"\b(pay|deposit|transfer)\s+(\$|₹|rs\.?|inr|usd)?\s*\d+[\d,]*\s*(to|for|towards|as|before)\b", re.I), "direct_cash_to_apply", 45, "critical"),
+    (re.compile(r"\b(pay|deposit|transfer)\s+(\$|₹|rs\.?|inr|usd)?\s*\d+[\d,]*.*?\b(fee|deposit|training|position|job|kit)\b", re.I), "direct_cash_to_apply", 45, "critical"),
+    (re.compile(r"\b(pay\s*to\s*confirm|confirm\s*(your\s*)?(position|seat|job|slot|candidature|hiring))\b", re.I), "pay_to_confirm_position", 45, "critical"),
+    (re.compile(r"\b(pay\s*immediately|urgent\s*payment|immediate\s*fee\s*payment|send\s*fee\s*now)\b", re.I), "urgent_payment_demand", 40, "critical"),
+    (re.compile(r"\b(pay\s*via\s*upi|transfer\s*via\s*(upi|gpay|phonepe|paytm)|upi\s*id\s*for\s*(fee|deposit))\b", re.I), "upi_fee_payment_demand", 40, "critical"),
     (re.compile(r"\b(bitcoin|crypto|usdt|eth|ethereum|gift\s*card|steam\s*card|apple\s*gift\s*card)\b", re.I), "cryptocurrency_or_giftcard_payment", 40, "critical"),
 ]
 

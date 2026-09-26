@@ -184,13 +184,20 @@ export function generatePdfReport(report) {
     startY: cursorY,
     head: [['TARGET DOSSIER SPECIFICATION', 'EXTRACTED ATTRIBUTES']],
     body: [
+      ['Input Evidence Type', report.input_type === 'PDF' ? 'PDF Document' : report.input_type === 'GOOGLE_FORM' ? 'Google Recruitment Form' : report.input_type === 'TEXT' ? 'Direct Job Text Ingestion' : 'Website URL'],
       ['Target Position / Title', candidateOrTitle],
       ['Company / Employer', company],
-      ['Scanned Target URL', targetUrl],
+      ['Scanned Target / Reference', targetUrl],
       [
         'Content Source',
         report.content_intelligence?.source === 'browser_fallback'
           ? 'Browser Fallback (User Provided Body Text)'
+          : report.input_type === 'PDF'
+          ? 'In-Memory PDF Text Extraction'
+          : report.input_type === 'GOOGLE_FORM'
+          ? 'Google Form DOM & Question Parsing'
+          : report.input_type === 'TEXT'
+          ? 'Direct Job Text Submission'
           : report.content_analyzed
           ? 'Automated HTTPX Engine Extraction'
           : 'Server Access Restricted (WAF Protected)',

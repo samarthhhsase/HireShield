@@ -30,6 +30,8 @@ class CandidateCreate(BaseModel):
     verification_audit: Optional[Dict[str, Any]] = None
     recommendations: Optional[List[Any]] = None
     explanation: Optional[str] = None
+    input_type: Optional[str] = "URL"
+    inputType: Optional[str] = "URL"
     is_demo_data: Optional[bool] = False
     isDemoData: Optional[bool] = False
 
@@ -55,6 +57,8 @@ class CandidateResponse(BaseModel):
     verification_audit: Optional[Dict[str, Any]] = None
     recommendations: Optional[List[Any]] = None
     explanation: Optional[str] = None
+    input_type: Optional[str] = "URL"
+    inputType: Optional[str] = "URL"
     isDemoData: Optional[bool] = False
     is_demo_data: Optional[bool] = False
     content_analyzed: Optional[bool] = True

@@ -23,7 +23,13 @@ import {
   Info,
   Lock
 } from 'lucide-react';
-import { scanJobUrl, analyzePageContent } from '../api/analysis';
+import { 
+  scanJobUrl, 
+  analyzePageContent, 
+  scanJobPdf, 
+  scanJobForm, 
+  scanJobText 
+} from '../api/analysis';
 import { getCandidateById } from '../api/candidates';
 import { API_BASE_URL } from '../api/client';
 import { generatePdfReport } from '../utils/generatePdfReport';
@@ -35,10 +41,17 @@ import TechnicalChecks from '../components/RiskAnalysis/TechnicalChecks';
 import AITerminal from '../components/RiskAnalysis/AITerminal';
 import BrowserFallbackModal from '../components/RiskAnalysis/BrowserFallbackModal';
 import VerificationAudit from '../components/RiskAnalysis/VerificationAudit';
+import MultiInputScanner from '../components/RiskAnalysis/MultiInputScanner';
+import RiskCategoryPillars from '../components/RiskAnalysis/RiskCategoryPillars';
+import ExecutiveSummaryAdvisory from '../components/RiskAnalysis/ExecutiveSummaryAdvisory';
 
 export default function RiskAnalysis() {
   const { id } = useParams();
   const location = useLocation();
+
+  // Multi-input selector state: 'URL' | 'PDF' | 'FORM' | 'TEXT'
+  const [activeTab, setActiveTab] = useState('URL');
+  const [specialNotice, setSpecialNotice] = useState(null);
 
   // URL state
   const [targetUrl, setTargetUrl] = useState('');
@@ -99,6 +112,7 @@ export default function RiskAnalysis() {
   const loadCandidate = async (candId) => {
     setScanning(true);
     setError(null);
+    setSpecialNotice(null);
     try {
       const data = await getCandidateById(candId);
       setReport({
@@ -122,6 +136,7 @@ export default function RiskAnalysis() {
 
     setScanning(true);
     setError(null);
+    setSpecialNotice(null);
     setShowFallbackModal(false);
 
     try {
@@ -144,6 +159,93 @@ export default function RiskAnalysis() {
         detail: err.detail || 'The backend could not complete extraction.',
         status: err.status,
         isNetworkError: err.isNetworkError,
+      });
+      setReport(null);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleScanUrl = (urlToScan) => {
+    executeScan(urlToScan);
+  };
+
+  const handleScanPdf = async (file, meta = {}) => {
+    if (!file) return;
+    setScanning(true);
+    setError(null);
+    setSpecialNotice(null);
+    try {
+      const result = await scanJobPdf(file, meta);
+      if (result.success === false && result.status === 'NO_EXTRACTABLE_TEXT') {
+        setSpecialNotice({
+          type: 'SCANNED_PDF',
+          title: 'Image-Based / Scanned PDF Detected',
+          message: result.message || 'No digital text could be extracted from this scanned or image-based document.',
+          recommendation: 'Optical Character Recognition (OCR) fallback is available. You can also paste the document text directly for immediate evaluation.',
+        });
+        setReport(null);
+      } else {
+        setReport(result);
+      }
+    } catch (err) {
+      console.error('PDF scan failed', err);
+      setError({
+        message: err.message || 'PDF threat evaluation failed.',
+        detail: err.detail || 'Could not parse the uploaded document.',
+        status: err.status,
+      });
+      setReport(null);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleScanForm = async (url) => {
+    if (!url) return;
+    setScanning(true);
+    setError(null);
+    setSpecialNotice(null);
+    try {
+      const result = await scanJobForm(url);
+      if (result.success === false) {
+        setSpecialNotice({
+          type: 'FORM_RESTRICTED',
+          title: 'Google Form Access Restricted',
+          message: result.message || 'Unable to access the form automatically. The form may require sign-in or be restricted.',
+          recommendation: 'Paste the form questions or recruitment text directly into HireShield for instant risk analysis.',
+        });
+        setReport(null);
+      } else {
+        setReport(result);
+      }
+    } catch (err) {
+      console.error('Form scan failed', err);
+      setError({
+        message: err.message || 'Google Form threat scan failed.',
+        detail: err.detail || 'Unable to retrieve form contents.',
+        status: err.status,
+      });
+      setReport(null);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleScanText = async ({ text, title, company }) => {
+    if (!text || text.trim().length < 15) return;
+    setScanning(true);
+    setError(null);
+    setSpecialNotice(null);
+    try {
+      const result = await scanJobText({ text, title, company });
+      setReport(result);
+    } catch (err) {
+      console.error('Text scan failed', err);
+      setError({
+        message: err.message || 'Job text evaluation failed.',
+        detail: err.detail || 'Could not process text input.',
+        status: err.status,
       });
       setReport(null);
     } finally {
@@ -179,114 +281,75 @@ export default function RiskAnalysis() {
 
   return (
     <div className="space-y-8 font-sans pb-16">
-      {/* 1. Page Header & Scanner Control Box */}
-      <div className="p-6 rounded-2xl bg-surface-100 border border-surface-border glass-panel space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 font-mono text-xs text-brand-light uppercase tracking-wider mb-1">
-              <span>INTELLIGENCE ENGINE // POST /api/scan</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-light animate-pulse" />
+      {/* 1. Multi-Input Scanner Control Panel */}
+      <MultiInputScanner
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        scanning={scanning}
+        targetUrl={targetUrl}
+        setTargetUrl={setTargetUrl}
+        onScanUrl={handleScanUrl}
+        onScanPdf={handleScanPdf}
+        onScanForm={handleScanForm}
+        onScanText={handleScanText}
+        presets={presets}
+      />
+
+      {/* Special Notice Banner (e.g. Scanned / Image-Based PDF or Restricted Google Form) */}
+      {specialNotice && (
+        <div className="p-6 rounded-2xl bg-surface-100 border border-brand-primary/40 glass-panel space-y-4 font-sans animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-risk-medium/15 text-risk-medium border border-risk-medium/30">
+              <AlertTriangle className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-extrabold text-white tracking-tight">
-              Recruitment Threat & Candidate Risk Analysis
-            </h2>
-            <p className="text-xs text-text-muted mt-1 font-sans">
-              Enter any job posting or candidate reference URL to execute real-time Layer A network intelligence and Layer B heuristic NLP.
-            </p>
-          </div>
-
-          {report && (
-            <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-              <button
-                type="button"
-                onClick={() => generatePdfReport(report)}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-brand-primary hover:bg-brand-light text-white text-xs font-mono font-bold shadow-cyber transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                title="Download Executive Security Audit PDF Report"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download PDF Report</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyReport}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-200 hover:bg-surface-300 border border-surface-border text-xs font-mono text-text-secondary transition-colors cursor-pointer"
-                title="Copy raw JSON analysis to clipboard"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-risk-low" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'JSON Copied' : 'Export JSON'}</span>
-              </button>
+            <div>
+              <div className="flex items-center gap-2 font-mono text-xs text-risk-medium font-bold uppercase">
+                <span>{specialNotice.title}</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-risk-low/10 text-risk-low border border-risk-low/30">
+                  ACTION REQUIRED
+                </span>
+              </div>
+              <p className="text-sm font-semibold text-white mt-0.5">
+                {specialNotice.message}
+              </p>
             </div>
-          )}
-        </div>
-
-        {/* Input Bar */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            executeScan();
-          }}
-          className="flex flex-col sm:flex-row items-stretch gap-3"
-        >
-          <div className="relative flex-1">
-            <Globe className="w-4 h-4 text-brand-light absolute left-3.5 top-3.5" />
-            <input
-              type="url"
-              value={targetUrl}
-              onChange={(e) => setTargetUrl(e.target.value)}
-              placeholder="https://company.com/careers/listing-target"
-              required
-              disabled={scanning}
-              className="w-full pl-10 pr-4 py-3 rounded-lg bg-surface-200 border border-surface-border text-white text-xs font-mono focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all disabled:opacity-50"
-            />
           </div>
-
-          <button
-            type="submit"
-            disabled={scanning}
-            className="px-6 py-3 rounded-lg bg-brand-primary hover:bg-brand-light disabled:bg-surface-300 text-white font-mono text-xs font-bold tracking-wider flex items-center justify-center gap-2 shadow-cyber transition-all hover:scale-[1.01] active:scale-[0.99] disabled:scale-100 flex-shrink-0 cursor-pointer"
-          >
-            {scanning ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Scanning Pipeline...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 fill-current" />
-                <span>Execute Risk Scan</span>
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Preset Targets */}
-        <div className="flex items-center gap-2 flex-wrap pt-1 font-mono text-[11px]">
-          <span className="text-text-muted">Preset Test Targets:</span>
-          {presets.map((p) => (
+          <div className="p-4 rounded-xl bg-surface-200/80 border border-surface-border text-xs text-text-secondary flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-brand-light flex-shrink-0" />
+              <span>{specialNotice.recommendation}</span>
+            </div>
             <button
-              key={p.label}
               type="button"
               onClick={() => {
-                setTargetUrl(p.url);
-                executeScan(p.url);
+                setActiveTab('TEXT');
+                setSpecialNotice(null);
               }}
-              disabled={scanning}
-              className="px-2.5 py-1 rounded bg-surface-200 hover:bg-surface-300 text-text-secondary border border-surface-border hover:border-brand-light/30 transition-colors cursor-pointer"
-              title={p.desc}
+              className="px-4 py-2 rounded-lg bg-brand-primary hover:bg-brand-light text-white font-mono text-xs font-bold tracking-wider flex items-center gap-2 shadow-cyber transition-all flex-shrink-0 cursor-pointer"
             >
-              {p.label}
+              <FileText className="w-3.5 h-3.5" />
+              <span>Switch to Paste Job Text</span>
             </button>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Error Alert Box (Only for fatal connection / server offline errors) */}
+      {/* Error Alert Box (Categorized failure feedback) */}
       {error && (
         <div className="p-5 rounded-xl bg-risk-critical/10 border border-risk-critical/30 text-xs font-mono text-risk-critical space-y-2">
           <div className="flex items-center gap-2 font-bold tracking-wide text-sm">
             <AlertOctagon className="w-4 h-4" />
-            <span>COMMUNICATION FAULT // {error.status || 'OFFLINE'}</span>
+            <span>
+              {error.status === 401 || error.status === 403
+                ? `AUTHENTICATION FAULT // HTTP ${error.status}`
+                : error.status === 404
+                ? 'ENDPOINT NOT FOUND // HTTP 404'
+                : error.status >= 500
+                ? `BACKEND SERVER FAULT // HTTP ${error.status}`
+                : error.isTimeout
+                ? 'NETWORK TIMEOUT // ENGINE DELAY'
+                : `COMMUNICATION FAULT // ${error.status || 'OFFLINE'}`}
+            </span>
           </div>
           <p className="text-text-primary text-xs leading-relaxed">
             {error.message}
@@ -469,10 +532,16 @@ export default function RiskAnalysis() {
           {/* Target Metadata Banner */}
           <div className="p-5 rounded-xl bg-surface-100 border border-surface-border flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 font-mono text-[11px] text-brand-light mb-1">
+              <div className="flex items-center gap-2 font-mono text-[11px] text-brand-light mb-1 flex-wrap">
                 <span>TARGET IDENTIFIER: {report.id || 'LIVE-SCAN-SESSION'}</span>
                 <span className="px-1.5 py-0.2 rounded bg-surface-200 text-text-muted border border-surface-border">
                   {report.fetch_status || 'LIVE'}
+                </span>
+                <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-brand-primary/20 text-brand-light border border-brand-primary/40 uppercase">
+                  {report.input_type === 'PDF' ? '📄 PDF Document' :
+                   report.input_type === 'GOOGLE_FORM' ? '📝 Google Form' :
+                   report.input_type === 'TEXT' ? '✍️ Pasted Text' :
+                   '🌐 Website URL'}
                 </span>
                 {report.content_analyzed ? (
                   <span className="px-1.5 py-0.2 rounded bg-risk-low/10 text-risk-low border border-risk-low/30">
@@ -488,16 +557,30 @@ export default function RiskAnalysis() {
                 {report.job?.title || 'Target Job Extraction'}
               </h3>
               <div className="flex items-center gap-2 font-mono text-xs text-text-muted mt-0.5 truncate">
-                <Globe className="w-3.5 h-3.5 flex-shrink-0" />
-                <a 
-                  href={report.final_url || report.url} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="truncate hover:text-brand-light transition-colors flex items-center gap-1"
-                >
-                  <span className="truncate">{report.final_url || report.url}</span>
-                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                </a>
+                {report.input_type === 'PDF' ? (
+                  <div className="flex items-center gap-1.5 truncate">
+                    <FileText className="w-3.5 h-3.5 text-brand-light flex-shrink-0" />
+                    <span className="truncate">{report.job?.title || 'Uploaded Document'} {report.job?.company ? `(${report.job.company})` : ''}</span>
+                  </div>
+                ) : report.input_type === 'TEXT' ? (
+                  <div className="flex items-center gap-1.5 truncate">
+                    <FileText className="w-3.5 h-3.5 text-brand-light flex-shrink-0" />
+                    <span className="truncate">Ingested Text Snippet {report.job?.company ? `&bull; ${report.job.company}` : ''}</span>
+                  </div>
+                ) : (
+                  <>
+                    <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+                    <a 
+                      href={report.final_url || report.url} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="truncate hover:text-brand-light transition-colors flex items-center gap-1"
+                    >
+                      <span className="truncate">{report.final_url || report.url}</span>
+                      <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                    </a>
+                  </>
+                )}
               </div>
             </div>
 
@@ -560,6 +643,23 @@ export default function RiskAnalysis() {
               </button>
             </div>
           </div>
+
+          {/* Executive Summary & Practical Safety Advisory */}
+          <ExecutiveSummaryAdvisory
+            summary={report.summary}
+            recommendations={report.recommendations}
+            riskLevel={report.risk_level}
+            riskScore={report.risk_score}
+            inputType={report.input_type || 'URL'}
+          />
+
+          {/* 4-Pillar Risk Categories Breakdown (Financial, Identity, Behavioral, Technical) */}
+          {report.categories && (
+            <RiskCategoryPillars
+              categories={report.categories}
+              inputType={report.input_type || 'URL'}
+            />
+          )}
 
           {/* Central Risk Dossier Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -654,7 +754,10 @@ export default function RiskAnalysis() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-6 p-6 rounded-xl bg-surface-100 border border-surface-border glass-panel">
-                <TechnicalChecks checks={report.technical_checks || {}} />
+                <TechnicalChecks 
+                  checks={report.technical_checks || {}} 
+                  inputType={report.input_type || 'URL'} 
+                />
               </div>
 
               <div className="lg:col-span-6 p-6 rounded-xl bg-surface-100 border border-surface-border glass-panel space-y-3">

@@ -288,6 +288,13 @@ export default function MultiInputScanner({
             </button>
           </form>
 
+          {targetUrl && (targetUrl.includes('forms.gle') || (targetUrl.includes('google.com') && targetUrl.includes('/forms'))) && (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-brand-primary/10 border border-brand-primary/30 text-[11px] text-brand-light font-mono">
+              <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Google Form detected! HireShield will automatically extract questions and audit for deceptive PII collection.</span>
+            </div>
+          )}
+
           {/* Preset Targets */}
           <div className="flex items-center gap-2 flex-wrap pt-1 font-mono text-[11px]">
             <span className="text-text-muted">Preset Test Targets:</span>

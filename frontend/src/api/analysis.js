@@ -81,18 +81,28 @@ export async function scanJobPdf(file, { company = '', title = '' } = {}) {
  * @returns {Promise<Object>} Formatted risk intelligence report
  */
 export async function scanJobForm(url) {
-  const response = await apiClient.post('/api/scanner/analyze-form', { url }, {
-    timeout: 20000,
-  });
+  try {
+    const response = await apiClient.post('/api/scanner/analyze-form', { url }, {
+      timeout: 20000,
+    });
 
-  if (response.data && response.data.success !== false) {
-    saveScanToSession(response.data);
+    if (response.data && response.data.success !== false) {
+      saveScanToSession(response.data);
+    }
+
+    return {
+      ...response.data,
+      latencyMs: response.latencyMs,
+    };
+  } catch (err) {
+    // If backend returns 404 (e.g. deployed backend not yet updated with /api/scanner/analyze-form),
+    // fall back cleanly to /api/scan which is always active on the server
+    if (err.status === 404) {
+      console.warn('Endpoint /api/scanner/analyze-form not found on backend. Falling back to /api/scan...');
+      return await scanJobUrl(url);
+    }
+    throw err;
   }
-
-  return {
-    ...response.data,
-    latencyMs: response.latencyMs,
-  };
 }
 
 /**
@@ -103,22 +113,36 @@ export async function scanJobForm(url) {
  * @returns {Promise<Object>} Formatted risk intelligence report
  */
 export async function scanJobText({ text, title = '', company = '' }) {
-  const response = await apiClient.post('/api/scanner/analyze-text', {
-    text,
-    title,
-    company,
-  }, {
-    timeout: 15000,
-  });
+  try {
+    const response = await apiClient.post('/api/scanner/analyze-text', {
+      text,
+      title,
+      company,
+    }, {
+      timeout: 15000,
+    });
 
-  if (response.data && response.data.success !== false) {
-    saveScanToSession(response.data);
+    if (response.data && response.data.success !== false) {
+      saveScanToSession(response.data);
+    }
+
+    return {
+      ...response.data,
+      latencyMs: response.latencyMs,
+    };
+  } catch (err) {
+    // If backend returns 404, fall back to /api/scanner/analyze-content
+    if (err.status === 404) {
+      console.warn('Endpoint /api/scanner/analyze-text not found on backend. Falling back to /api/scanner/analyze-content...');
+      return await analyzePageContent({
+        url: '',
+        title,
+        company,
+        content: text,
+      });
+    }
+    throw err;
   }
-
-  return {
-    ...response.data,
-    latencyMs: response.latencyMs,
-  };
 }
 
 /**

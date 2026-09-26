@@ -9,7 +9,11 @@ import io
 import re
 import logging
 from typing import Dict, Any, List, Optional, Tuple
-from pypdf import PdfReader
+
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
 
 logger = logging.getLogger("hireshield.services.pdf")
 
@@ -101,6 +105,18 @@ def extract_text_from_pdf(
             }
 
     # 3. Read PDF stream with pypdf
+    if PdfReader is None:
+        return {
+            "success": False,
+            "error_type": "PARSER_UNAVAILABLE",
+            "message": "PDF parsing library (pypdf) is not installed on this server.",
+            "is_scanned_image": False,
+            "text": "",
+            "page_count": 0,
+            "extracted_urls": [],
+            "filename": filename,
+        }
+
     try:
         stream = io.BytesIO(pdf_bytes)
         reader = PdfReader(stream)

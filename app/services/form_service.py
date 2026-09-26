@@ -7,7 +7,7 @@ from Google Forms and recruitment application portals with SSRF protection and g
 
 import re
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
@@ -20,14 +20,17 @@ logger = logging.getLogger("hireshield.services.form")
 
 def is_google_form_url(url: str) -> bool:
     """Verifies whether the URL matches known Google Forms domains."""
+    if not url or not isinstance(url, str):
+        return False
+    u = url.strip()
+    if not u.startswith(("http://", "https://")):
+        u = "https://" + u
     try:
-        parsed = urlparse(url)
+        parsed = urlparse(u)
         hostname = (parsed.hostname or "").lower()
-        if hostname == "forms.gle":
+        if hostname == "forms.gle" or hostname.endswith(".forms.gle"):
             return True
-        if hostname.endswith("google.com") and "/forms" in (parsed.path or "").lower():
-            return True
-        if hostname.endswith("docs.google.com") and "/forms" in (parsed.path or "").lower():
+        if (hostname == "google.com" or hostname.endswith(".google.com")) and "/forms" in (parsed.path or "").lower():
             return True
         return False
     except Exception:

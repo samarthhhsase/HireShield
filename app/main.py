@@ -16,6 +16,7 @@ from app.api.scanner import router as scanner_router
 from app.services.risk_pipeline import categorize_signals
 from app.services.auth_service import seed_default_analyst, get_optional_current_user
 from app.services.candidate_service import seed_default_candidates, auto_save_scan
+from app.services.form_service import is_google_form_url, extract_form_content
 from app.services.scraper import (
     extract_job_page,
     is_valid_url,
@@ -164,10 +165,39 @@ def scan_job(
     url = str(request.url).strip()
     logger.info(f"Scanner request received for: {url}")
 
-    # 1. Fetch & extract page
-    page = extract_job_page(url)
+    # 1. Fetch & extract page (with dedicated Google Forms support)
+    is_form = is_google_form_url(url)
+    if is_form:
+        logger.info(f"Target URL identified as Google Form in /api/scan: {url}")
+        form_res = extract_form_content(url)
+        final_url = form_res.get("final_url", url)
+        if form_res.get("success"):
+            page = {
+                "fetch_status": FETCH_SUCCESS,
+                "http_status": 200,
+                "message": form_res.get("message", "Form successfully extracted."),
+                "fallback_available": False,
+                "final_url": final_url,
+                "redirect_count": 0,
+                "title": form_res.get("title", "Google Form Recruitment Application"),
+                "text": form_res.get("combined_text", ""),
+            }
+        else:
+            page = {
+                "fetch_status": FETCH_BLOCKED,
+                "http_status": 403,
+                "message": form_res.get("message", "Unable to access the form automatically."),
+                "fallback_available": True,
+                "final_url": final_url,
+                "redirect_count": 0,
+                "title": form_res.get("title") or "Restricted Google Form",
+                "text": "",
+            }
+    else:
+        page = extract_job_page(url)
+        final_url = page.get("final_url", url)
+
     fetch_status = page.get("fetch_status", FETCH_NETWORK_ERROR)
-    final_url = page.get("final_url", url)
 
     # 2. Run Layer A: URL Intelligence & Technical checks (always executes)
     technical = analyze_technical(final_url, page.get("redirect_count", 0))
@@ -279,8 +309,8 @@ def scan_job(
         "legitimacy_score": result.get("legitimacy_score"),
         "fake_job_probability": result.get("fake_job_probability"),
         "verdict": result.get("verdict"),
-        "input_type": "URL",
-        "inputType": "URL",
+        "input_type": "GOOGLE_FORM" if is_form else "URL",
+        "inputType": "GOOGLE_FORM" if is_form else "URL",
         "red_flags": red_flags,
         "signals": red_flags,
         "green_flags": result.get("green_flags", []),

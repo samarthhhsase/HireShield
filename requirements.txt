@@ -7,3 +7,6 @@ python-whois
 dnspython
 sqlalchemy
 email-validator
+pypdf
+python-multipart
+python-dotenv

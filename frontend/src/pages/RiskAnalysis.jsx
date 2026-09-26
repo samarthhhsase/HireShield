@@ -340,15 +340,21 @@ export default function RiskAnalysis() {
           <div className="flex items-center gap-2 font-bold tracking-wide text-sm">
             <AlertOctagon className="w-4 h-4" />
             <span>
-              {error.status === 401 || error.status === 403
-                ? `AUTHENTICATION FAULT // HTTP ${error.status}`
+              {error.status === 401
+                ? 'AUTHENTICATION REQUIRED // HTTP 401'
+                : error.status === 403
+                ? 'ACCESS DENIED // HTTP 403'
                 : error.status === 404
-                ? 'ENDPOINT NOT FOUND // HTTP 404'
+                ? 'API ENDPOINT NOT FOUND // HTTP 404'
+                : error.status === 422
+                ? 'INVALID REQUEST DATA // HTTP 422'
                 : error.status >= 500
-                ? `BACKEND SERVER FAULT // HTTP ${error.status}`
+                ? `SERVER ERROR // HTTP ${error.status}`
                 : error.isTimeout
                 ? 'NETWORK TIMEOUT // ENGINE DELAY'
-                : `COMMUNICATION FAULT // ${error.status || 'OFFLINE'}`}
+                : error.isNetworkError
+                ? 'UNABLE TO REACH BACKEND // NETWORK FAILURE'
+                : `COMMUNICATION FAULT // ${error.status || 'UNKNOWN'}`}
             </span>
           </div>
           <p className="text-text-primary text-xs leading-relaxed">

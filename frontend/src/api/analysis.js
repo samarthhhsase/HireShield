@@ -137,57 +137,84 @@ export function normalizeRiskReport(raw, context = {}) {
       };
     }
   } else {
-    const finSignals = redFlags.filter((f) => {
-      const text = (f.title || f.name || f.message || '').toLowerCase();
-      return text.includes('fee') || text.includes('pay') || text.includes('upi') || text.includes('money') || text.includes('deposit');
-    }).map((f) => f.title || f.message || f.description || String(f));
+    const checkSignalMatch = (f, keywords) => {
+      const text = [
+        f?.title || '',
+        f?.name || '',
+        f?.message || '',
+        f?.description || '',
+        f?.evidence || '',
+        f?.type || '',
+        f?.category || '',
+      ].join(' ').toLowerCase();
+      return keywords.some((kw) => text.includes(kw));
+    };
 
-    const idSignals = redFlags.filter((f) => {
-      const text = (f.title || f.name || f.message || '').toLowerCase();
-      return text.includes('aadhaar') || text.includes('pan') || text.includes('bank') || text.includes('id') || text.includes('credential');
-    }).map((f) => f.title || f.message || f.description || String(f));
+    const finSignals = redFlags
+      .filter((f) => checkSignalMatch(f, ['fee', 'pay', 'upi', 'money', 'deposit', 'financial', 'charge', 'cash', 'crypto', 'card', 'bank account']))
+      .map((f) => f.title || f.message || f.description || String(f));
 
-    const behSignals = redFlags.filter((f) => {
-      const text = (f.title || f.name || f.message || '').toLowerCase();
-      return text.includes('urgent') || text.includes('telegram') || text.includes('whatsapp') || text.includes('guaranteed');
-    }).map((f) => f.title || f.message || f.description || String(f));
+    const idSignals = redFlags
+      .filter((f) => checkSignalMatch(f, ['aadhaar', 'pan', 'bank', 'id', 'credential', 'sensitive', 'identity', 'passport', 'cheque', 'ifsc', 'otp', 'password']))
+      .map((f) => f.title || f.message || f.description || String(f));
 
-    const techSignals = redFlags.filter((f) => {
-      const text = (f.title || f.name || f.message || '').toLowerCase();
-      return text.includes('dns') || text.includes('ssl') || text.includes('domain') || text.includes('tld');
-    }).map((f) => f.title || f.message || f.description || String(f));
+    const behSignals = redFlags
+      .filter((f) => checkSignalMatch(f, ['urgent', 'telegram', 'whatsapp', 'guarantee', 'slot', 'shortlist', 'pressure', 'channel', 'informal', 'immediate', 'threat', 'lure', '100%']))
+      .map((f) => f.title || f.message || f.description || String(f));
+
+    const techSignals = redFlags
+      .filter((f) => checkSignalMatch(f, ['dns', 'ssl', 'domain', 'tld', 'infrastructure', 'whois', 'subdomain', 'certificate', 'https']))
+      .map((f) => f.title || f.message || f.description || String(f));
+
+    const finScore = finSignals.length > 0 
+      ? Math.max(scores.structural || 0, scores.payment || 0, finSignals.length >= 2 ? 100 : 85)
+      : (scores.payment || scores.structural || 0);
+
+    const idScore = idSignals.length > 0
+      ? Math.max(scores.behavioral || 0, scores.credential || 0, idSignals.length >= 2 ? 100 : 85)
+      : (scores.credential || 0);
+
+    const behScore = behSignals.length > 0
+      ? Math.max(scores.linguistic || 0, scores.urgency || 0, behSignals.length >= 2 ? 100 : 80)
+      : (scores.urgency || scores.linguistic || 0);
+
+    const techScore = scores.technical || 0;
 
     categories = {
       financial_risk: {
         name: 'Financial Risk',
-        score: scores.structural || 0,
-        level: (scores.structural || 0) > 30 ? 'High' : 'Low',
+        score: finScore,
+        level: finScore >= 75 ? 'Critical' : (finScore >= 40 ? 'High' : (finScore >= 20 ? 'Medium' : 'Low')),
         signals: finSignals,
         flags: finSignals,
+        reason: finSignals.length > 0 ? `${finSignals.length} payment or deposit indicator(s) detected.` : 'No upfront fees or deposit demands detected.',
         available: true,
       },
       identity_risk: {
         name: 'Identity / Data Risk',
-        score: scores.behavioral || 0,
-        level: (scores.behavioral || 0) > 30 ? 'High' : 'Low',
+        score: idScore,
+        level: idScore >= 75 ? 'Critical' : (idScore >= 40 ? 'High' : (idScore >= 20 ? 'Medium' : 'Low')),
         signals: idSignals,
         flags: idSignals,
+        reason: idSignals.length > 0 ? `${idSignals.length} sensitive identity or credential solicitation(s) detected.` : 'Standard identification credentials expected.',
         available: true,
       },
       behavioral_risk: {
         name: 'Behavioral Risk',
-        score: scores.linguistic || 0,
-        level: (scores.linguistic || 0) > 30 ? 'High' : 'Low',
+        score: behScore,
+        level: behScore >= 75 ? 'Critical' : (behScore >= 40 ? 'High' : (behScore >= 20 ? 'Medium' : 'Low')),
         signals: behSignals,
         flags: behSignals,
+        reason: behSignals.length > 0 ? `${behSignals.length} behavioral anomaly indicator(s) identified.` : 'Normal recruitment workflow.',
         available: true,
       },
       technical_risk: {
         name: 'Technical Infrastructure',
-        score: scores.technical || 0,
-        level: (scores.technical || 0) > 30 ? 'High' : 'Low',
+        score: techScore,
+        level: techScore >= 75 ? 'Critical' : (techScore >= 40 ? 'High' : (techScore >= 20 ? 'Medium' : 'Low')),
         signals: techSignals,
         flags: techSignals,
+        reason: techSignals.length > 0 ? `${techSignals.length} technical anomaly indicator(s) identified.` : 'Domain infrastructure appears established and secure.',
         available: Boolean(url),
       },
     };
@@ -239,8 +266,8 @@ export function normalizeRiskReport(raw, context = {}) {
 
 /**
  * Scan a candidate posting or recruitment URL through HireShield's Risk Engine.
- * Primary endpoint: POST /api/risk/analyze (matches STEP 7)
- * Graceful fallback: POST /api/scan
+ * Primary endpoint: POST /api/scan (Production URL scraper & multi-layer threat evaluator)
+ * Graceful fallback: POST /api/risk/analyze
  *
  * @param {string} url - Target URL to analyze
  * @returns {Promise<Object>} Formatted risk intelligence report
@@ -250,15 +277,15 @@ export async function scanJobUrl(url) {
   let response;
 
   try {
-    // Primary path: POST /api/risk/analyze with { url }
-    response = await apiClient.post('/api/risk/analyze', {
+    // Primary path: POST /api/scan with { url } (Official URL Scanner)
+    response = await apiClient.post('/api/scan', {
       url: cleanUrl,
     });
   } catch (err) {
-    // If /api/risk/analyze returns 404 or fails, fall back to /api/scan
-    if (err.status === 404) {
-      console.warn('POST /api/risk/analyze not found, trying POST /api/scan...');
-      response = await apiClient.post('/api/scan', { url: cleanUrl });
+    // If /api/scan returns 404 or fails, fall back to /api/risk/analyze
+    if (err.status === 404 || err.status === 500) {
+      console.warn('POST /api/scan unavailable, trying POST /api/risk/analyze...', err);
+      response = await apiClient.post('/api/risk/analyze', { url: cleanUrl });
     } else {
       throw err;
     }

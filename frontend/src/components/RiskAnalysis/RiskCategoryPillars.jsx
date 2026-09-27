@@ -112,10 +112,13 @@ export default function RiskCategoryPillars({ categories = {}, inputType = 'URL'
             available: true,
             signals: [],
           };
-          const isAvailable = cat.available !== false;
+          const isAvailable = cat.available !== false && cat.status !== 'UNAVAILABLE';
           const levelStyle = getLevelColor(cat.level, isAvailable);
           const score = typeof cat.score === 'number' ? Math.round(cat.score) : 0;
-          const signals = cat.signals || [];
+          const rawSignals = cat.signals || cat.flags || [];
+          const signals = (Array.isArray(rawSignals) ? rawSignals : [])
+            .map((s) => typeof s === 'string' ? s : (s?.title || s?.message || s?.description || ''))
+            .filter(Boolean);
 
           return (
             <div
@@ -175,7 +178,7 @@ export default function RiskCategoryPillars({ categories = {}, inputType = 'URL'
                     {signals.slice(0, 3).map((sig, idx) => (
                       <div key={idx} className="flex items-start gap-1.5 text-[11px] text-text-secondary leading-snug">
                         <span className="text-risk-high font-mono flex-shrink-0">🚩</span>
-                        <span className="truncate">{sig}</span>
+                        <span className="truncate">{typeof sig === 'string' ? sig : (sig?.title || sig?.message || sig?.description || JSON.stringify(sig))}</span>
                       </div>
                     ))}
                     {signals.length > 3 && (

@@ -18,12 +18,53 @@ export function normalizeRiskReport(raw, context = {}) {
     ? raw.risk_score 
     : (typeof raw.score === 'number' ? raw.score : 0);
 
-  // Extract signals / red flags
-  const redFlags = raw.red_flags || raw.signals || [];
+  // Extract signals / red flags with normalized fields
+  const rawRedFlags = raw.red_flags || raw.signals || [];
+  const redFlags = rawRedFlags.map((f) => {
+    if (typeof f === 'string') {
+      return {
+        severity: 'medium',
+        type: 'NLP',
+        category: 'NLP',
+        title: f,
+        message: f,
+        description: f,
+      };
+    }
+    const title = f?.title || f?.message || 'Threat Signal';
+    const message = f?.message || f?.title || 'Threat Signal';
+    const desc = f?.description || f?.evidence || '';
+    return {
+      ...f,
+      severity: f?.severity || 'medium',
+      type: f?.type || f?.category || 'Threat',
+      category: f?.category || f?.type || 'Threat',
+      title,
+      message,
+      description: desc,
+    };
+  });
 
-  // Extract green flags / positive signals
-  const greenFlags = raw.green_flags || (raw.positive_signals || []).map((s) => (typeof s === 'string' ? { message: s } : s));
-  const positiveSignals = raw.positive_signals || (raw.green_flags || []).map((g) => (typeof g === 'string' ? g : g.message || ''));
+  // Extract green flags / positive signals with normalized fields
+  const rawGreenFlags = raw.green_flags || raw.positive_signals || [];
+  const greenFlags = rawGreenFlags.map((g) => {
+    if (typeof g === 'string') {
+      return {
+        type: 'verification',
+        title: g,
+        message: g,
+      };
+    }
+    const title = g?.title || g?.message || 'Verified Trust Marker';
+    const message = g?.message || g?.title || 'Verified Trust Marker';
+    return {
+      ...g,
+      type: g?.type || 'verification',
+      title,
+      message,
+    };
+  });
+  const positiveSignals = greenFlags.map((g) => g.message || g.title);
 
   // Extract verdict
   const verdict = raw.verdict || raw.verification_audit?.verdict || (
@@ -75,41 +116,82 @@ export function normalizeRiskReport(raw, context = {}) {
     technical: domainAnalysis.score || 0,
   };
 
-  // 4-Pillar risk categories breakdown
-  const categories = raw.categories || {
-    financial_risk: {
-      score: scores.structural || 0,
-      level: (scores.structural || 0) > 30 ? 'High' : 'Low',
-      signals: redFlags.filter((f) => {
-        const text = (f.title || f.name || f.message || '').toLowerCase();
-        return text.includes('fee') || text.includes('pay') || text.includes('upi') || text.includes('money') || text.includes('deposit');
-      }),
-    },
-    identity_risk: {
-      score: scores.behavioral || 0,
-      level: (scores.behavioral || 0) > 30 ? 'High' : 'Low',
-      signals: redFlags.filter((f) => {
-        const text = (f.title || f.name || f.message || '').toLowerCase();
-        return text.includes('aadhaar') || text.includes('pan') || text.includes('bank') || text.includes('id') || text.includes('credential');
-      }),
-    },
-    behavioral_risk: {
-      score: scores.linguistic || 0,
-      level: (scores.linguistic || 0) > 30 ? 'High' : 'Low',
-      signals: redFlags.filter((f) => {
-        const text = (f.title || f.name || f.message || '').toLowerCase();
-        return text.includes('urgent') || text.includes('telegram') || text.includes('whatsapp') || text.includes('guaranteed');
-      }),
-    },
-    technical_risk: {
-      score: scores.technical || 0,
-      level: (scores.technical || 0) > 30 ? 'High' : 'Low',
-      signals: redFlags.filter((f) => {
-        const text = (f.title || f.name || f.message || '').toLowerCase();
-        return text.includes('dns') || text.includes('ssl') || text.includes('domain') || text.includes('tld');
-      }),
-    },
-  };
+  // 4-Pillar risk categories breakdown: ensure signals/flags are always cleanly mapped to string arrays!
+  const rawCategories = raw.categories;
+  let categories;
+
+  if (rawCategories && typeof rawCategories === 'object') {
+    categories = {};
+    for (const [key, val] of Object.entries(rawCategories)) {
+      const rawFlags = val.flags || val.signals || [];
+      const flagsStrings = rawFlags.map((f) => 
+        typeof f === 'string' ? f : (f?.title || f?.message || f?.description || String(f))
+      );
+      categories[key] = {
+        ...val,
+        score: typeof val.score === 'number' ? val.score : 0,
+        level: val.level || 'Low',
+        signals: flagsStrings,
+        flags: flagsStrings,
+        available: val.status !== 'UNAVAILABLE' && val.available !== false,
+      };
+    }
+  } else {
+    const finSignals = redFlags.filter((f) => {
+      const text = (f.title || f.name || f.message || '').toLowerCase();
+      return text.includes('fee') || text.includes('pay') || text.includes('upi') || text.includes('money') || text.includes('deposit');
+    }).map((f) => f.title || f.message || f.description || String(f));
+
+    const idSignals = redFlags.filter((f) => {
+      const text = (f.title || f.name || f.message || '').toLowerCase();
+      return text.includes('aadhaar') || text.includes('pan') || text.includes('bank') || text.includes('id') || text.includes('credential');
+    }).map((f) => f.title || f.message || f.description || String(f));
+
+    const behSignals = redFlags.filter((f) => {
+      const text = (f.title || f.name || f.message || '').toLowerCase();
+      return text.includes('urgent') || text.includes('telegram') || text.includes('whatsapp') || text.includes('guaranteed');
+    }).map((f) => f.title || f.message || f.description || String(f));
+
+    const techSignals = redFlags.filter((f) => {
+      const text = (f.title || f.name || f.message || '').toLowerCase();
+      return text.includes('dns') || text.includes('ssl') || text.includes('domain') || text.includes('tld');
+    }).map((f) => f.title || f.message || f.description || String(f));
+
+    categories = {
+      financial_risk: {
+        name: 'Financial Risk',
+        score: scores.structural || 0,
+        level: (scores.structural || 0) > 30 ? 'High' : 'Low',
+        signals: finSignals,
+        flags: finSignals,
+        available: true,
+      },
+      identity_risk: {
+        name: 'Identity / Data Risk',
+        score: scores.behavioral || 0,
+        level: (scores.behavioral || 0) > 30 ? 'High' : 'Low',
+        signals: idSignals,
+        flags: idSignals,
+        available: true,
+      },
+      behavioral_risk: {
+        name: 'Behavioral Risk',
+        score: scores.linguistic || 0,
+        level: (scores.linguistic || 0) > 30 ? 'High' : 'Low',
+        signals: behSignals,
+        flags: behSignals,
+        available: true,
+      },
+      technical_risk: {
+        name: 'Technical Infrastructure',
+        score: scores.technical || 0,
+        level: (scores.technical || 0) > 30 ? 'High' : 'Low',
+        signals: techSignals,
+        flags: techSignals,
+        available: Boolean(url),
+      },
+    };
+  }
 
   // Job metadata
   const job = raw.job || {
@@ -117,6 +199,11 @@ export function normalizeRiskReport(raw, context = {}) {
     company: raw.company || context.company || null,
     text_preview: raw.text_preview || (context.text ? context.text.slice(0, 1000) : ''),
   };
+
+  const rawRecommendations = raw.recommendations || [];
+  const recommendations = rawRecommendations.length > 0
+    ? rawRecommendations.map((r) => (typeof r === 'string' ? r : (r?.text || r?.action || r?.message || JSON.stringify(r))))
+    : ['Follow standard cybersecurity diligence before providing sensitive information.'];
 
   return {
     ...raw,
@@ -138,7 +225,7 @@ export function normalizeRiskReport(raw, context = {}) {
     red_flags: redFlags,
     positive_signals: positiveSignals,
     green_flags: greenFlags,
-    recommendations: raw.recommendations || ['Follow standard cybersecurity diligence before providing sensitive information.'],
+    recommendations,
     verification_audit: raw.verification_audit || null,
     technical_checks: technicalChecks,
     url_intelligence: urlIntelligence,

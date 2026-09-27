@@ -16,14 +16,14 @@ import {
 } from 'lucide-react';
 
 export default function VerificationAudit({ audit }) {
-  if (!audit) return null;
+  if (!audit || typeof audit !== 'object') return null;
 
-  const verdict = audit.verdict || 'UNVERIFIED';
+  const verdict = typeof audit.verdict === 'string' ? audit.verdict : 'UNVERIFIED';
   const isReal = verdict === 'VERIFIED_REAL' || verdict.includes('REAL');
   const isFake = verdict === 'FLAGGED_FAKE' || verdict.includes('FAKE') || verdict.includes('SCAM');
 
   const getPillarIcon = (pillarName = '') => {
-    const p = pillarName.toLowerCase();
+    const p = (pillarName || '').toLowerCase();
     if (p.includes('domain')) return Globe;
     if (p.includes('employer') || p.includes('brand')) return Building2;
     if (p.includes('recruiter') || p.includes('channel') || p.includes('communication')) return Mail;
@@ -34,7 +34,7 @@ export default function VerificationAudit({ audit }) {
   };
 
   const getStatusBadge = (status = 'CAUTION') => {
-    const s = status.toUpperCase();
+    const s = (status || 'CAUTION').toUpperCase();
     if (s === 'PASSED') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-risk-low/10 text-risk-low border border-risk-low/30">
@@ -59,7 +59,7 @@ export default function VerificationAudit({ audit }) {
     );
   };
 
-  const checks = audit.checks_performed || [];
+  const checks = Array.isArray(audit.checks_performed) ? audit.checks_performed : [];
 
   return (
     <div className="p-6 rounded-2xl bg-surface-100 border border-surface-border glass-panel space-y-6">
@@ -167,7 +167,7 @@ export default function VerificationAudit({ audit }) {
                       What We Checked:
                     </span>
                     <p className="text-text-secondary text-[11px] leading-relaxed">
-                      {chk.what_we_checked}
+                      {typeof chk.what_we_checked === 'string' ? chk.what_we_checked : JSON.stringify(chk.what_we_checked)}
                     </p>
                   </div>
 
@@ -176,7 +176,7 @@ export default function VerificationAudit({ audit }) {
                       How It Was Verified:
                     </span>
                     <p className="text-text-secondary text-[11px] leading-relaxed">
-                      {chk.how_verified}
+                      {typeof chk.how_verified === 'string' ? chk.how_verified : JSON.stringify(chk.how_verified)}
                     </p>
                   </div>
                 </div>
@@ -193,7 +193,7 @@ export default function VerificationAudit({ audit }) {
                     Audit Finding:
                   </span>
                   <span className="leading-relaxed block">
-                    {chk.finding}
+                    {typeof chk.finding === 'string' ? chk.finding : JSON.stringify(chk.finding)}
                   </span>
                 </div>
               </div>

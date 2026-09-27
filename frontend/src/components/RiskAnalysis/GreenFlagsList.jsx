@@ -53,7 +53,11 @@ export default function GreenFlagsList({ greenFlags = [], legitimacyScore = null
 
       <div className="space-y-2.5">
         {greenFlags.map((flag, index) => {
-          const Icon = getFlagIcon(flag.type);
+          const flagObj = typeof flag === 'string' ? { message: flag } : (flag || {});
+          const Icon = getFlagIcon(flagObj.type);
+          const title = flagObj.title || flagObj.message || 'Verified Trust Marker';
+          const description = flagObj.title && flagObj.message && flagObj.title !== flagObj.message ? flagObj.message : '';
+
           return (
             <div
               key={index}
@@ -66,21 +70,23 @@ export default function GreenFlagsList({ greenFlags = [], legitimacyScore = null
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-risk-low/15 text-risk-low border-risk-low/40">
                       VERIFIED MARKER
                     </span>
-                    {flag.trust_bonus && (
+                    {flagObj.trust_bonus && (
                       <span className="text-[10px] font-mono text-risk-low font-bold">
-                        +{flag.trust_bonus} Trust
+                        +{flagObj.trust_bonus} Trust
                       </span>
                     )}
                   </div>
                   <div className="text-xs font-semibold text-white">
-                    {flag.title || flag.message}
+                    {title}
                   </div>
-                  <p className="text-[11px] text-text-secondary leading-relaxed mt-0.5">
-                    {flag.message}
-                  </p>
-                  {flag.evidence && (
+                  {description && (
+                    <p className="text-[11px] text-text-secondary leading-relaxed mt-0.5">
+                      {description}
+                    </p>
+                  )}
+                  {flagObj.evidence && (
                     <div className="mt-1 font-mono text-[10px] text-text-muted italic truncate">
-                      {flag.evidence}
+                      {flagObj.evidence}
                     </div>
                   )}
                 </div>

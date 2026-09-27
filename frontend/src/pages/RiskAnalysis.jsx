@@ -44,6 +44,7 @@ import VerificationAudit from '../components/RiskAnalysis/VerificationAudit';
 import MultiInputScanner from '../components/RiskAnalysis/MultiInputScanner';
 import RiskCategoryPillars from '../components/RiskAnalysis/RiskCategoryPillars';
 import ExecutiveSummaryAdvisory from '../components/RiskAnalysis/ExecutiveSummaryAdvisory';
+import ErrorBoundary from '../components/Common/ErrorBoundary';
 
 export default function RiskAnalysis() {
   const { id } = useParams();
@@ -386,8 +387,9 @@ export default function RiskAnalysis() {
       )}
 
       {/* 2. THE STAR REPORT INTERFACE: RENDERS ACTUAL BACKEND RESPONSE */}
-      {!scanning && report && (
-        <div className="space-y-6">
+      <ErrorBoundary onReset={() => setReport(null)}>
+        {!scanning && report && (
+          <div className="space-y-6">
 
           {/* PAGE ACCESS LIMITED CYBER PANEL (Triggered on HTTP 403 / WAF / Automated Block) */}
           {isAccessLimited && (
@@ -786,7 +788,7 @@ export default function RiskAnalysis() {
                   ]).map((rec, i) => (
                     <div key={i} className="p-3 rounded-lg bg-surface-200/70 border border-surface-border text-xs text-text-primary flex items-start gap-2.5">
                       <CheckCircle2 className="w-4 h-4 text-brand-light mt-0.5 flex-shrink-0" />
-                      <span className="leading-relaxed">{rec}</span>
+                      <span className="leading-relaxed">{typeof rec === 'string' ? rec : (rec?.text || rec?.action || rec?.message || JSON.stringify(rec))}</span>
                     </div>
                   ))}
                 </div>
@@ -795,6 +797,7 @@ export default function RiskAnalysis() {
           </div>
         </div>
       )}
+      </ErrorBoundary>
 
       {/* Browser Content Fallback Modal Component */}
       <BrowserFallbackModal

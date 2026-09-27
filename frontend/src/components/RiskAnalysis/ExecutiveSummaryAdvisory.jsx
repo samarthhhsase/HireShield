@@ -148,7 +148,7 @@ export default function ExecutiveSummaryAdvisory({
               className="p-3 rounded-lg bg-surface-200/60 border border-surface-border hover:border-brand-primary/30 transition-colors flex items-start gap-2.5 text-xs text-text-secondary leading-snug"
             >
               <CheckCircle2 className="w-4 h-4 text-brand-light mt-0.5 flex-shrink-0" />
-              <span>{rec}</span>
+              <span>{typeof rec === 'string' ? rec : (rec?.text || rec?.action || rec?.message || JSON.stringify(rec))}</span>
             </div>
           ))}
         </div>

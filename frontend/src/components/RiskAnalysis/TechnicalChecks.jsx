@@ -2,7 +2,7 @@ import React from 'react';
 import { Lock, Unlock, Calendar, Globe, Server, CornerDownRight, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function TechnicalChecks({ checks = {}, inputType = 'URL' }) {
-  const isAvailable = checks?.available !== false && (inputType === 'URL' || checks?.ip || checks?.domain_age_days);
+  const isAvailable = checks?.available !== false && checks?.status !== 'UNAVAILABLE' && (inputType === 'URL' || checks?.ip || checks?.domain_age_days);
 
   if (!isAvailable) {
     return (

@@ -10,9 +10,15 @@ export default function RiskBreakdownBars({ scores = {}, redFlags = [], contentA
   } = scores;
 
   // Check if critical behavioral override was triggered in backend:
-  const messages = redFlags.map((f) => (f.message || '').toLowerCase()).join(' ');
-  const hasSensitive = messages.includes('sensitive identity');
-  const hasPayment = messages.includes('payment') || messages.includes('fee');
+  const messages = (Array.isArray(redFlags) ? redFlags : [])
+    .map((f) => {
+      if (!f) return '';
+      if (typeof f === 'string') return f.toLowerCase();
+      return `${f.title || ''} ${f.message || ''} ${f.description || ''}`.toLowerCase();
+    })
+    .join(' ');
+  const hasSensitive = messages.includes('sensitive identity') || messages.includes('aadhaar') || messages.includes('pan');
+  const hasPayment = messages.includes('payment') || messages.includes('fee') || messages.includes('deposit');
   const overrideTriggered = contentAnalyzed && hasSensitive && hasPayment;
 
   const categories = [

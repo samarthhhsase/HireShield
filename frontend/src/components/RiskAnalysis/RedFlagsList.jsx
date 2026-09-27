@@ -58,8 +58,15 @@ export default function RedFlagsList({ redFlags = [] }) {
 
       <div className="space-y-2.5">
         {redFlags.map((flag, index) => {
-          const style = getSeverityStyle(flag.severity);
+          const flagObj = typeof flag === 'string'
+            ? { title: flag, message: flag, severity: 'medium', category: 'General' }
+            : (flag || {});
+          const severity = flagObj.severity || 'medium';
+          const style = getSeverityStyle(severity);
           const Icon = style.icon;
+          const category = flagObj.category || flagObj.type || 'Threat';
+          const title = flagObj.title || flagObj.message || 'Suspicious Signal';
+          const description = flagObj.description && flagObj.description !== title ? flagObj.description : '';
 
           return (
             <div
@@ -71,15 +78,20 @@ export default function RedFlagsList({ redFlags = [] }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${style.badge}`}>
-                      {flag.severity}
+                      {severity}
                     </span>
                     <span className="text-[10px] font-mono text-text-muted uppercase px-1.5 py-0.5 rounded bg-surface-200 border border-surface-border">
-                      {flag.type}
+                      {category}
                     </span>
                   </div>
-                  <p className="text-xs text-text-primary leading-relaxed font-medium">
-                    {flag.message}
+                  <p className="text-xs text-text-primary leading-relaxed font-semibold">
+                    {title}
                   </p>
+                  {description && (
+                    <p className="text-[11px] text-text-secondary leading-relaxed mt-1 font-normal">
+                      {description}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

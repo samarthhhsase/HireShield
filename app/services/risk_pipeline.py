@@ -59,7 +59,7 @@ def categorize_signals(signals: List[Dict[str, Any]], technical_available: bool)
             financial_score_accum += score
 
         # Identity/Data categorization
-        elif any(term in cat or term in title_lower for term in ["credential", "aadhaar", "pan", "passport", "bank", "otp", "password", "pin", "cvv", "credit_card", "government id", "identity", "upi"]):
+        elif any(term in cat or term in title_lower for term in ["credential", "aadhaar", "pan", "passport", "bank", "banking", "ifsc", "cheque", "otp", "password", "pin", "cvv", "credit_card", "government id", "identity", "upi"]):
             identity_flags.append(title)
             identity_score_accum += score
 

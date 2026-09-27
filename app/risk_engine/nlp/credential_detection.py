@@ -10,10 +10,15 @@ from typing import Dict, Any, List
 
 # High-Risk Credential & Identity Demands
 CREDENTIAL_PATTERNS = [
+    (re.compile(r"\b(aadhaar\s*(?:and|&|\+)?\s*pan(?:\s*card)?(?:\s*details)?)\b", re.I), "aadhaar_pan_identity_request", 40, "critical"),
+    (re.compile(r"\b(aadhaar(?:\s*card|\s*number)?|pan(?:\s*card|\s*number)?|passport(?:\s*copy|\s*photo|\s*details)?|voter\s*id)\s*(?:details?|numbers?|copies?|documents?)?\s*(?:requested|required|needed|mandatory|solicited|to\s+activate)\b", re.I), "government_id_harvesting", 40, "critical"),
     (re.compile(r"\b(send|upload|provide|share|submit|attach|enter)\s+(?:your\s+)?.*?\b(aadhaar(?:\s*card|\s*number)?|pan\s*card|passport(?:\s*copy|\s*photo|\s*details)?)\b.*?\b(apply|registration|register|interview|joining|form)\b", re.I), "upfront_government_id_harvesting", 45, "critical"),
     (re.compile(r"\b(send|upload|enter|provide|share|attach|submit)\s+(?:your\s+)?(?:clear\s+copy\s+of\s+|copy\s+of\s+)?(aadhaar(?:\s*card|\s*number)?|pan(?:\s*card|\s*number)?|passport(?:\s*copy|\s*photo|\s*details)?)\b", re.I), "direct_government_id_harvesting", 40, "critical"),
-    (re.compile(r"\b(aadhaar\s*(number|card)?|pan\s*card\s*details?)\s*(mandatory\s+for\s+application|required\s+to\s+register|mandatory\s+to\s+apply|mandatory\s+field)\b", re.I), "mandatory_id_registration", 35, "high"),
-    (re.compile(r"\b(bank\s*account\s*(?:number|details)?|ifsc\s*code|net\s*banking|cancelled\s*cheque|bank\s*passbook)\b", re.I), "premature_banking_details", 45, "critical"),
+    (re.compile(r"\b(aadhaar\s*(?:number|card)?|pan\s*card\s*details?)\s*(?:mandatory\s+for\s+application|required\s+to\s+register|mandatory\s+to\s+apply|mandatory\s+field)\b", re.I), "mandatory_id_registration", 35, "high"),
+    (re.compile(r"\b(bank\s*account(?:\s*number|\s*details)?)\b", re.I), "bank_account_solicitation", 40, "critical"),
+    (re.compile(r"\b(ifsc(?:\s*code)?)\b", re.I), "ifsc_code_solicitation", 35, "critical"),
+    (re.compile(r"\b(cancelled\s*cheque|bank\s*passbook)\b", re.I), "cancelled_cheque_solicitation", 40, "critical"),
+    (re.compile(r"\b(net\s*banking(?:\s*credentials|\s*details|\s*password)?)\b", re.I), "net_banking_solicitation", 45, "critical"),
     (re.compile(r"\b(otp|one[- ]time\s*password|verification\s*code)\b.*?\b(phone|mobile|sms|received|share|send|enter|provide)\b", re.I), "otp_harvesting_attempt", 50, "critical"),
     (re.compile(r"\b(net\s*banking\s*password|security\s*pin|account\s*password|portal\s*password|login\s*password|cvv)\b", re.I), "password_or_pin_harvesting", 50, "critical"),
     (re.compile(r"\b(password|pin|security\s*code|cvv)\s*(of\s+your\s+account|for\s+verification|to\s+activate)\b", re.I), "password_or_pin_harvesting", 50, "critical"),

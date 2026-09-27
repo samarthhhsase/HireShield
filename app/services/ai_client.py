@@ -38,6 +38,7 @@ logger = logging.getLogger("hireshield.ai")
 # ==============================================================================
 
 GOV_IDENTITY_PATTERNS = [
+    r"\b(aadhaar\s*(?:and|&|\+)?\s*pan)\b",
     r"\b(aadhaar|aadhar|pan\s*card)\b",
     r"\b(social\s*security\s*number|ssn)\b",
     r"\b(passport\s*copy|driver('s)?\s*license\s*(photo|scan))\b",
@@ -58,6 +59,7 @@ SENSITIVE_IDENTITY_PATTERNS = (
 )
 
 UPFRONT_PAYMENT_PATTERNS = [
+    r"\b(refundable\s*(?:verification\s*)?fee(s)?)\b",
     r"\b(registration|processing|verification|security|training|application|kit|uniform|laptop)\s*fee(s)?\b",
     r"\b(security\s*deposit|refundable\s*deposit|advance\s*deposit)\b",
     r"\bpay\s*(₹|rs\.?|inr|\$)\s*\d+",
@@ -79,13 +81,18 @@ CHECK_CASHING_OVERPAYMENT_PATTERNS = [
 # ==============================================================================
 
 HIGH_PRESSURE_URGENCY_PATTERNS = [
-    r"\b(limited\s*slots|last\s*chance|within\s*24\s*hours|immediate\s*joining\s*without\s*interview|act\s*now\s*or\s*miss)\b",
+    r"\bwithin\s*\d+\s*(?:hours?|hrs?|minutes?|mins?)\b",
+    r"\b(failure\s+to\s+.*?(?:within\s+\d+\s*(?:hours?|hrs?))?.*?(?:cancellation|cancel|lose|expire))\b",
+    r"\burgent\s*:\b",
+    r"\b(limited\s*slots|last\s*chance|immediate\s*joining\s*without\s*interview|act\s*now\s*or\s*miss)\b",
     r"\bhurry\s*(up)?\s*(limited|few|last|slots)\b",
     r"\bonly\s*(1|2|3|few)\s*(slots?|openings?|seats?)\s*left\b",
 ]
 
 INTERVIEW_BYPASS_PATTERNS = [
-    r"\b(direct\s*selection\s*without\s*interview|offer\s*letter\s*(issued|ready)\s*(without|before)\s*interview|immediate\s*joining\s*without\s*(any\s*)?interview|no\s*interview\s*(needed|required))\b",
+    r"\b(no\s*interview\s*(?:is\s*)?(?:needed|required))\b",
+    r"\b(immediate\s*joining\s*(?:is\s*)?available)\b",
+    r"\b(direct\s*selection\s*without\s*interview|offer\s*letter\s*(issued|ready)\s*(without|before)\s*interview|immediate\s*joining\s*without\s*(any\s*)?interview)\b",
     r"\bdirect\s*(joining|selection)\s*no\s*(exam|test|interview)\b",
 ]
 
@@ -107,6 +114,7 @@ LURE_WORK_SCAM_PATTERNS = [
 # ==============================================================================
 
 INFORMAL_CHANNEL_PATTERNS = [
+    r"\b(whatsapp\s+(?:or|and)\s+telegram)\b",
     r"\b(whatsapp|telegram)\b",
     r"\bdm\s*(on|me)\s*(instagram|telegram|whatsapp)\b",
     r"\bmessage\s*(on|via)\s*(whatsapp|telegram)\b",

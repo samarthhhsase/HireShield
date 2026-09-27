@@ -45,6 +45,16 @@ class RiskEngine:
         url = (url or "").strip()
         domain = extract_domain_from_url(url) if url else ""
 
+        # Auto-extract page text if URL is provided without job_text
+        if url and not job_text:
+            try:
+                from app.services.scraper import extract_job_page, FETCH_SUCCESS
+                page = extract_job_page(url)
+                if page.get("fetch_status") == FETCH_SUCCESS:
+                    job_text = (page.get("text", "") or "").strip()
+            except Exception as scrape_err:
+                logger.warning(f"RiskEngine auto-extraction failed for URL '{url}': {scrape_err}")
+
         # 1. NLP & Language Features
         nlp_res = analyze_job_text(job_text)
         nlp_score = nlp_res["nlp_score"]
@@ -113,9 +123,9 @@ class RiskEngine:
         # Add NLP signals
         for f in nlp_features:
             feat_lower = f.get("feature", "").lower()
-            if any(w in feat_lower for w in ["fee", "deposit", "cash", "crypto"]):
+            if any(w in feat_lower for w in ["fee", "deposit", "cash", "crypto", "payment"]):
                 cat = "payment"
-            elif any(w in feat_lower for w in ["aadhaar", "pan", "passport", "bank", "otp", "password", "pin", "credential", "government_id", "identity", "upi"]):
+            elif any(w in feat_lower for w in ["aadhaar", "pan", "passport", "bank", "banking", "ifsc", "cheque", "otp", "password", "pin", "credential", "government_id", "identity", "upi"]):
                 cat = "credential"
             else:
                 cat = "nlp"

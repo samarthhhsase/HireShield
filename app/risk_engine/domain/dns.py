@@ -22,6 +22,10 @@ def is_private_ip(ip_str: str) -> bool:
     """Checks if an IP address belongs to private/loopback/link-local ranges (SSRF defense)."""
     try:
         ip_obj = ipaddress.ip_address(ip_str)
+        # RFC 6052 Well-Known Prefix (64:ff9b::/96) translates public IPv4 addresses over IPv6.
+        # It is marked as reserved by Python's ipaddress module, but routes to public Internet hosts.
+        if ip_obj.version == 6 and ip_obj in ipaddress.IPv6Network("64:ff9b::/96"):
+            return False
         return (
             ip_obj.is_private
             or ip_obj.is_loopback

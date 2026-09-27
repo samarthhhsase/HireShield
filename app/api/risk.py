@@ -37,6 +37,7 @@ class RiskAnalyzeResponse(BaseModel):
     risk_score: int
     score: Optional[int] = None
     risk_level: str
+    verdict: Optional[str] = None
     confidence: float
     summary: str
     signals: List[Dict[str, Any]]
@@ -46,8 +47,11 @@ class RiskAnalyzeResponse(BaseModel):
     override: Optional[Dict[str, Any]] = None
     analysis: Dict[str, Any]
     categories: Optional[Dict[str, Any]] = None
+    job: Optional[Dict[str, Any]] = None
     input_type: Optional[str] = "URL"
     inputType: Optional[str] = "URL"
+    final_url: Optional[str] = None
+    fetch_status: Optional[str] = None
     id: Optional[str] = None
     candidate_id: Optional[str] = None
 
@@ -110,6 +114,24 @@ def analyze_risk_endpoint(
         sanitized_salary = sanitize_input(payload.salary, max_len=200)
         sanitized_source = sanitize_input(payload.source, max_len=50)
 
+        # Auto-extract page text when URL is provided without text
+        page_title = None
+        final_url = sanitized_url
+        fetch_status_val = "FETCH_SUCCESS"
+        if sanitized_url and not sanitized_text:
+            try:
+                from app.services.scraper import extract_job_page, FETCH_SUCCESS
+                page = extract_job_page(sanitized_url)
+                fetch_status_val = page.get("fetch_status", "FETCH_SUCCESS")
+                final_url = page.get("final_url", sanitized_url)
+                if fetch_status_val == FETCH_SUCCESS:
+                    extracted_content = page.get("text", "")
+                    if extracted_content:
+                        sanitized_text = sanitize_input(extracted_content, max_len=50000)
+                    page_title = page.get("title", "")
+            except Exception as scrape_err:
+                logger.warning(f"URL content extraction failed for '{sanitized_url}': {scrape_err}")
+
         # Require at least one actionable input (URL or job text)
         if not sanitized_url and not sanitized_text:
             raise HTTPException(
@@ -137,6 +159,19 @@ def analyze_risk_endpoint(
         result["score"] = result.get("risk_score", 0)
         result["input_type"] = resolved_input_type
         result["inputType"] = resolved_input_type
+        result["fetch_status"] = fetch_status_val
+        result["final_url"] = final_url
+        result["verdict"] = result.get("verification_audit", {}).get("verdict") or (
+            "CONFIRMED_SCAM" if result.get("risk_score", 0) >= 60 else (
+                "SUSPICIOUS" if result.get("risk_score", 0) >= 35 else "VERIFIED_LEGITIMATE"
+            )
+        )
+        resolved_title = sanitized_company or page_title or "Evaluated Position"
+        result["job"] = {
+            "title": resolved_title,
+            "company": sanitized_company or page_title,
+            "text_preview": (sanitized_text or "")[:1000],
+        }
         result["categories"] = categorize_signals(result.get("signals", []), technical_available=bool(sanitized_url))
         user_id = current_user.id if current_user else None
 
@@ -146,18 +181,18 @@ def analyze_risk_endpoint(
             with SessionLocal() as db:
                 cand_dict = {
                     "url": sanitized_url,
-                    "final_url": sanitized_url,
+                    "final_url": final_url,
                     "user_id": user_id,
                     "input_type": resolved_input_type,
                     "inputType": resolved_input_type,
                     "job": {
-                        "title": sanitized_company or "Evaluated Position",
+                        "title": resolved_title,
                         "company": sanitized_company,
                         "text_preview": (sanitized_text or "")[:1000],
                     },
                     "risk_score": result.get("risk_score", 0),
                     "risk_level": result.get("risk_level", "LOW"),
-                    "verdict": result.get("verification_audit", {}).get("verdict") or ("CONFIRMED_SCAM" if result.get("risk_score", 0) >= 60 else "VERIFIED_LEGITIMATE"),
+                    "verdict": result["verdict"],
                     "legitimacy_score": max(0, 100 - result.get("risk_score", 0)),
                     "fake_job_probability": round(result.get("risk_score", 0) / 100.0, 2),
                     "scores": result.get("analysis", {}),
@@ -177,7 +212,6 @@ def analyze_risk_endpoint(
 
         result["id"] = record_id
         result["candidate_id"] = record_id
-        return result
         return result
 
     except HTTPException:

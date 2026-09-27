@@ -10,16 +10,19 @@ from typing import List, Dict, Any, Tuple
 
 # Guaranteed Employment / Income Claims
 GUARANTEED_JOB_PATTERNS = [
-    (re.compile(r"\bguaranteed\s+(job|placement|income|employment|salary|earnings?)\b", re.I), "guaranteed_placement", 25, "high"),
-    (re.compile(r"\b100%\s*(job\s*guarantee|placement\s*guarantee|money\s*back)\b", re.I), "guaranteed_placement_100", 25, "high"),
-    (re.compile(r"\b(no\s+interview\s+required|direct\s+(joining|selection|appointment))\b", re.I), "direct_selection_no_interview", 30, "high"),
-    (re.compile(r"\binstant\s+(offer\s*letter|appointment\s*letter)\b", re.I), "instant_offer_letter", 25, "high"),
-    (re.compile(r"\bearn\s+(\$|₹|rs\.?|inr|usd)\s*\d+[\d,]*\s*(daily|per\s*day|per\s*hour)\b", re.I), "unrealistic_daily_earning", 20, "medium"),
+    (re.compile(r"\b100%\s*(?:job\s*guarantee|placement\s*guarantee|money\s*back)\b", re.I), "guaranteed_placement_100", 25, "high"),
+    (re.compile(r"\b(guaranteed\s+(?:job|placement|income|employment|salary|earnings?)|job\s*guarantee)\b", re.I), "guaranteed_placement", 25, "high"),
+    (re.compile(r"\b(no\s+interview\s*(?:is)?\s*required|without\s+(?:any\s+)?interview|no\s+formal\s+interview|direct\s+(?:joining|selection|appointment))\b", re.I), "direct_selection_no_interview", 30, "high"),
+    (re.compile(r"\b(congratulations!?\s+you\s+have\s+been\s+shortlisted)\b", re.I), "unsolicited_shortlist_lure", 20, "medium"),
+    (re.compile(r"\binstant\s+(?:offer\s*letter|appointment\s*letter)\b", re.I), "instant_offer_letter", 25, "high"),
+    (re.compile(r"\bearn\s+(?:\$|₹|rs\.?|inr|usd)\s*\d+[\d,]*\s*(?:daily|per\s*day|per\s*hour)\b", re.I), "unrealistic_daily_earning", 20, "medium"),
 ]
 
 # Suspicious Contact & Off-Platform Communication Methods
 SUSPICIOUS_CONTACT_PATTERNS = [
-    (re.compile(r"\b(contact|reach|message|apply|send\s+(?:resume|cv)|chat)\s*(?:us|me|recruiter|team)?\s*(?:only\s+)?(?:via|on|through)?\s*(?:only\s+)?(whats\s*app|wa\.me|telegram|t\.me|signal)\b", re.I), "off_platform_chat_only", 30, "high"),
+    (re.compile(r"\b(whats\s*app\s+(?:or|and|\/)\s*telegram|telegram\s+(?:or|and|\/)\s*whats\s*app)\b", re.I), "whatsapp_or_telegram_recruitment", 30, "high"),
+    (re.compile(r"\b(?:contact|reach|message|apply|chat|connect|reach\s*out).*?\b(?:via|through|on)\s*(?:whats\s*app|wa\.me|telegram|t\.me|signal)\b", re.I), "off_platform_chat_solicitation", 30, "high"),
+    (re.compile(r"\b(?:through|via|on)\s+(?:whats\s*app|telegram|signal)\s+(?:for\s+assistance|for\s+help|for\s+interview|to\s+apply)\b", re.I), "off_platform_chat_assistance", 25, "medium"),
     (re.compile(r"\b(whats\s*app|telegram|signal)\s+(?:only|recruiter\s*only|recruiter|contact|chat|messaging|interview|team)\b", re.I), "off_platform_chat_only", 30, "high"),
     (re.compile(r"\btelegram\s*(?:username|id|channel|handle)?\s*:\s*@?\w+", re.I), "telegram_contact", 25, "medium"),
     (re.compile(r"\b(whatsapp|wa\.me)\s*(?:number|contact|only)?\s*:\s*[\+\d\s\-\(\)]{8,}", re.I), "whatsapp_contact", 25, "medium"),

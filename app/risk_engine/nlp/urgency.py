@@ -10,18 +10,24 @@ from typing import Dict, Any, List
 
 # Predatory Urgency Patterns (artificial scarcity, high pressure)
 PREDATORY_URGENCY_PATTERNS = [
+    (re.compile(r"\b(?:within|in|next)\s+\d+\s*(?:hours?|hrs?|minutes?|mins?)\b", re.I), "short_deadline_pressure", 25, "high"),
+    (re.compile(r"\b(?:failure\s+to\s+.*?(?:within\s+\d+\s*(?:hours?|hrs?|days?))?.*?(?:cancellation|lose|forfeit|cancel|expire))\b", re.I), "offer_cancellation_threat", 30, "critical"),
+    (re.compile(r"\burgent\s*:\s*.*?\b", re.I), "urgent_prefix_pressure", 20, "high"),
+    (re.compile(r"\b(urgent\s+action\s+required|strictly\s+within\s+\d+|respond\s+immediately)\b", re.I), "urgent_action_required", 20, "high"),
+    (re.compile(r"\b(limited\s+slots?|seats?\s+filling\s+fast|spots?\s+filling\s+fast|few\s+slots?\s+left)\b", re.I), "limited_slots_scarcity", 20, "high"),
     (re.compile(r"\b(act\s+now|today\s+only|immediate\s+joining\s+today)\b", re.I), "extreme_time_pressure", 20, "high"),
-    (re.compile(r"\b(only\s+\d+\s+(seats?|vacancies|spots?)\s*(left|remaining))\b", re.I), "artificial_scarcity", 20, "high"),
-    (re.compile(r"\b(offer\s+valid\s+(for\s+today|for\s+next\s+\d+\s+hours?|until\s+midnight))\b", re.I), "exploding_offer_pressure", 25, "high"),
+    (re.compile(r"\b(only\s+\d+\s+(?:seats?|vacancies|spots?)\s*(?:left|remaining))\b", re.I), "artificial_scarcity", 20, "high"),
+    (re.compile(r"\b(offer\s+valid\s+(?:for\s+today|for\s+next\s+\d+\s+hours?|until\s+midnight))\b", re.I), "exploding_offer_pressure", 25, "high"),
     (re.compile(r"\b(hurry\s+up|don['’]?t\s+miss\s+this\s+golden\s+opportunity)\b", re.I), "emotional_fomo_lure", 15, "medium"),
-    (re.compile(r"\b(selected\s+candidates?\s+must\s+(pay|confirm\s+immediately))\b", re.I), "coercive_selection", 30, "critical"),
-    (re.compile(r"\b(apply\s+immediately\s+or\s+lose\s+(your\s+)?(spot|job))\b", re.I), "threat_based_pressure", 25, "high"),
+    (re.compile(r"\b(selected\s+candidates?\s+must\s+(?:pay|confirm\s+immediately))\b", re.I), "coercive_selection", 30, "critical"),
+    (re.compile(r"\b(apply\s+immediately\s+or\s+lose\s+(?:your\s+)?(?:spot|job))\b", re.I), "threat_based_pressure", 25, "high"),
 ]
 
 # Standard Hiring Expressions (mild urgency, normal corporate language)
 STANDARD_URGENCY_PATTERNS = [
-    (re.compile(r"\b(urgently\s+hiring|urgent\s+(opening|requirement|hire))\b", re.I), "standard_urgent_hiring", 5, "low"),
-    (re.compile(r"\bapply\s+(now|today|online)\b", re.I), "standard_call_to_action", 0, "none"),
+    (re.compile(r"\b(immediate\s+joining(?:\s+is\s+available)?|direct\s+immediate\s+joining)\b", re.I), "immediate_joining_opportunity", 5, "low"),
+    (re.compile(r"\b(urgently\s+hiring|urgent\s+(?:opening|requirement|hire))\b", re.I), "standard_urgent_hiring", 5, "low"),
+    (re.compile(r"\bapply\s+(?:now|today|online)\b", re.I), "standard_call_to_action", 0, "none"),
     (re.compile(r"\bimmediate\s+joiners?\s+preferred\b", re.I), "immediate_joiner_preference", 3, "low"),
 ]
 

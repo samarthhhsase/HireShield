@@ -41,7 +41,7 @@ def evaluate_critical_overrides(
     # 1. Upfront Payment / Fee demands
     for f in nlp_features:
         feat_name = f.get("feature", "")
-        if any(term in feat_name for term in ["registration_fee", "security_deposit", "equipment_payment", "cash_to_apply"]):
+        if any(term in feat_name for term in ["fee", "deposit", "equipment_payment", "cash_to_apply"]):
             return {
                 "override": True,
                 "reason": f"Confirmed upfront payment request detected ({f.get('evidence', 'Registration fee')})",
@@ -63,7 +63,7 @@ def evaluate_critical_overrides(
     # 3. Government ID / Bank Account Harvesting
     for f in nlp_features:
         feat_name = f.get("feature", "")
-        if any(term in feat_name for term in ["upfront_government_id", "mandatory_id_registration", "premature_banking"]):
+        if any(term in feat_name for term in ["government_id", "aadhaar", "pan", "passport", "banking", "bank_account", "ifsc", "cheque", "premature_banking", "mandatory_id_registration"]):
             return {
                 "override": True,
                 "reason": f"Premature government identity or banking details collection detected ({f.get('evidence', 'Identity documents')})",

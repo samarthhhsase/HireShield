@@ -17,6 +17,9 @@ DISCLAIMER_PATTERNS = [
 
 # Explicit upfront payment demands
 PAYMENT_PATTERNS = [
+    (re.compile(r"\b(refundable\s+(?:verification\s+)?fees?|verification\s+fees?)\b", re.I), "verification_fee_request", 40, "critical"),
+    (re.compile(r"\b(refundable\s*fees?)\b", re.I), "refundable_fee_scheme", 40, "critical"),
+    (re.compile(r"(?:\$|₹|rs\.?|inr|usd)?\s*\d+[\d,]*\s*(?:refundable\s+)?(?:verification|registration|processing|application|joining|onboarding|security)\s*fees?\b", re.I), "monetary_fee_demand", 45, "critical"),
     (re.compile(r"\b(upfront|registration|processing|application|onboarding|admin|joining|verification|mandatory)\s*fees?\s*(of\s*)?(\$|₹|rs\.?|inr|usd)?\s*\d*\b", re.I), "registration_fee_request", 40, "critical"),
     (re.compile(r"\b(security\s*deposit|refundable\s*deposit|caution\s*deposit)\s*(of\s*)?(\$|₹|rs\.?|inr|usd)?\s*\d*\b", re.I), "security_deposit_request", 40, "critical"),
     (re.compile(r"\b(training|course|certification|courier|delivery|kit|materials?|laptop)\s*fees?\s*(required|must\s+be\s+paid|applicable|of\s*(\$|₹|rs\.?|inr|usd)?\s*\d*|\b)", re.I), "mandatory_training_or_courier_fee", 35, "critical"),
